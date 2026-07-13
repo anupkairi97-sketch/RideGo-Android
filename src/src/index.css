@@ -1,0 +1,6 @@
+/* Tailwind now loads via CDN script in index.html — no @tailwind directives needed here. */
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  overscroll-behavior: none;
+}
