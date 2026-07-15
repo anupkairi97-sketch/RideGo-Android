@@ -1,0 +1,49 @@
+name: Reset Android Project (fresh regenerate)
+
+# Deletes the existing android/ folder completely and regenerates it from
+# scratch, then commits the fresh version back to the repo. Use this when
+# the android/ folder may have stale/corrupted native files from earlier
+# generate+sync cycles.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  reset-android:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+
+      - name: Install npm dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: Build the web app
+        run: npm run build
+
+      - name: Delete old android folder completely
+        run: rm -rf android
+
+      - name: Add Android platform fresh
+        run: npx cap add android
+
+      - name: Sync web build into the fresh Android project
+        run: npx cap sync android
+
+      - name: Make gradlew executable
+        run: chmod +x android/gradlew
+
+      - name: Commit the freshly regenerated android/ folder back to the repo
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A -- android
+          git diff --cached --quiet && echo "No changes to commit" || git commit -m "chore: fresh regenerate of Capacitor android project"
+          git push
