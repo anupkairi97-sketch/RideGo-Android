@@ -4,6 +4,7 @@ import { MapContainer, TileLayer, Marker, Polyline } from "react-leaflet";
 import L from "leaflet";
 import { TextToSpeech } from "@capacitor-community/text-to-speech";
 import "leaflet/dist/leaflet.css";
+import "./firebase";
 import {
   Phone, ShieldCheck, MapPin, Search, Bike, CarTaxiFront, Zap, Car, Truck,
   Clock, Star, Wallet, Banknote, Bell, Sun, Moon, Globe, Volume2,
