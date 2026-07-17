@@ -32,6 +32,8 @@ workflows:
           cd android
           chmod +x ./gradlew
           ./gradlew assembleDebug
+           echo "SHA1 Fingerprint:"
+           ./gradlew signingReport
 
     artifacts:
       - android/app/build/outputs/**/*.apk
