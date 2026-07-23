@@ -1,8 +1,5 @@
 {
-  "appId": "com.aunap.ridego",
+  "appId": "com.anupkap.ridego",
   "appName": "RideGo",
-  "webDir": "dist",
-  "server": {
-    "androidScheme": "https"
-  }
+  "webDir": "dist"
 }
