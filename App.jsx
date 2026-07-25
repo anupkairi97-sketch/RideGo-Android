@@ -6,6 +6,15 @@ import { TextToSpeech } from "@capacitor-community/text-to-speech";
 import "leaflet/dist/leaflet.css";
 import { initializeApp } from "firebase/app";
 import { getAuth, RecaptchaVerifier, signInWithPhoneNumber } from "firebase/auth";
+import { 
+  getFirestore, 
+  doc, 
+  setDoc, 
+  addDoc, 
+  collection, 
+  serverTimestamp 
+} from 'firebase/firestore';
+
 import {
   Phone, ShieldCheck, MapPin, Search, Bike, CarTaxiFront, Zap, Car, Truck,
   Clock, Star, Wallet, Banknote, Bell, Sun, Moon, Globe, Volume2,
