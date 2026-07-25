@@ -1,9 +1,11 @@
-import React, { useState, useEffect, useRef, createContext, useContext, useCallback, memo } from "react";
+  import React, { useState, useEffect, useRef, createContext, useContext, useCallback, memo } from "react";
 import { BarChart, Bar, XAxis, ResponsiveContainer, Tooltip, CartesianGrid } from "recharts";
 import { MapContainer, TileLayer, Marker, Polyline } from "react-leaflet";
 import L from "leaflet";
 import { TextToSpeech } from "@capacitor-community/text-to-speech";
 import "leaflet/dist/leaflet.css";
+import { initializeApp } from "firebase/app";
+import { getAuth, RecaptchaVerifier, signInWithPhoneNumber } from "firebase/auth";
 import {
   Phone, ShieldCheck, MapPin, Search, Bike, CarTaxiFront, Zap, Car, Truck,
   Clock, Star, Wallet, Banknote, Bell, Sun, Moon, Globe, Volume2,
@@ -18,6 +20,19 @@ import {
 /*  RideGo — Combined Passenger + Driver App (Premium Edition)         */
 /*  Frontend-only demo. Photos persist via artifact key-value storage. */
 /* ------------------------------------------------------------------ */
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBaEBZn9-uTCnASTpKBf5j04WHwWPq5tUA",
+  authDomain: "ridego-da1e6.firebaseapp.com",
+  projectId: "ridego-da1e6",
+  storageBucket: "ridego-da1e6.firebasestorage.app",
+  messagingSenderId: "427118307731",
+  appId: "1:427118307731:web:b9809c5e3af3297ceea066",
+  measurementId: "G-HLS033CEQ8"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
 
 const T = {
   en: {
@@ -175,7 +190,7 @@ const T = {
     easyMode: "সহজ মোড", easyModeDesc: "বড় বোতাম, বড় লেখা, প্রতিটি স্ক্রিনে ভয়েস",
     rideAnnouncements: "রাইড ঘোষণা", changePhoto: "ছবি পরিবর্তন করুন",
     takePhoto: "ক্যামেরা", chooseGallery: "গ্যালারি", photoSaved: "ছবি সংরক্ষিত হয়েছে",
-    voiceNewRequest: "নতুন রাইড অনুরোধ।", voicePickup: "পিকআপ", voiceDestination: "গন্তব্য",
+    voiceNewRequest: "নতুন রাইড অনুরোধ।", voicePickup: "পিকআপ", voiceDestination: "গंतव्य",
     voiceDistance: "দূরত্ব", voiceEta: "আনুমানিক সময়", voiceFare: "ভাড়া", voiceVehicle: "গাড়ির ধরন",
     rideBookedVoice: "রাইড সফলভাবে বুক হয়েছে।", driverOnWayVoice: "ড্রাইভার আসছেন।",
     driverArrivedVoice: "ড্রাইভার পৌঁছে গেছেন।", tripStartedVoice: "যাত্রা শুরু হয়েছে।",
@@ -577,8 +592,39 @@ function PLoginScreen({ go }) {
   const t = useT();
   const { lang, setLang, setRole } = useApp();
   const [mobile, setMobile] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const speakGuide = useVoiceGuide();
+
   useEffect(() => { speakGuide(t.mobileLabel); }, []);
+
+  const handleSendOtp = async () => {
+    if (mobile.length !== 10) return;
+    setLoading(true);
+    setError("");
+    try {
+      if (!window.recaptchaVerifier) {
+        window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+          size: 'invisible',
+          callback: (response) => {}
+        });
+      }
+      const appVerifier = window.recaptchaVerifier;
+      const phoneNumber = "+91" + mobile;
+      const confirmationResult = await signInWithPhoneNumber(auth, phoneNumber, appVerifier);
+      go("otp", { mobile, confirmationResult });
+    } catch (err) {
+      console.error(err);
+      setError("Failed to send OTP. Please try again.");
+      if (window.recaptchaVerifier) {
+        window.recaptchaVerifier.clear();
+        window.recaptchaVerifier = null;
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="flex flex-col h-full px-6 rg-anim-in">
       <TopBar onBack={() => setRole(null)} />
@@ -600,7 +646,11 @@ function PLoginScreen({ go }) {
         </div>
         <label className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--muted)" }}>{t.mobileLabel}</label>
         <Field icon={Phone} type="tel" placeholder="98765 43210" value={mobile} onChange={(e) => setMobile(e.target.value.replace(/\D/g, "").slice(0, 10))} />
-        <Btn disabled={mobile.length !== 10} onClick={() => go("otp", { mobile })}>{t.sendOtp} <ChevronRight size={17} /></Btn>
+        {error && <p className="text-xs text-red-500 text-center">{error}</p>}
+        <div id="recaptcha-container"></div>
+        <Btn disabled={mobile.length !== 10 || loading} onClick={handleSendOtp}>
+          {loading ? <Loader2 size={18} className="animate-spin" /> : <>{t.sendOtp} <ChevronRight size={17} /></>}
+        </Btn>
         <p className="text-center text-xs pt-1" style={{ color: "var(--muted)" }}>Free to use · Sab kuchh free hai 🎉</p>
       </div>
     </div>
@@ -609,16 +659,38 @@ function PLoginScreen({ go }) {
 
 function POtpScreen({ go, params }) {
   const t = useT();
-  const [otp, setOtp] = useState(["", "", "", ""]);
-  const refs = [useRef(), useRef(), useRef(), useRef()];
+  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
+  const refs = [useRef(), useRef(), useRef(), useRef(), useRef(), useRef()];
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const speakGuide = useVoiceGuide();
+
   useEffect(() => { speakGuide(t.otpVoice); }, []);
+
   const update = (i, val) => {
     if (!/^\d?$/.test(val)) return;
     const next = [...otp]; next[i] = val; setOtp(next);
-    if (val && i < 3) refs[i + 1].current?.focus();
+    if (val && i < 5) refs[i + 1].current?.focus();
   };
+
   const complete = otp.every((d) => d !== "");
+
+  const handleVerify = async () => {
+    if (!complete) return;
+    setLoading(true);
+    setError("");
+    try {
+      const code = otp.join("");
+      await params.confirmationResult.confirm(code);
+      go("register", params);
+    } catch (err) {
+      console.error(err);
+      setError("Invalid OTP. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="flex flex-col h-full px-6 rg-anim-in">
       <TopBar onBack={() => go("login")} />
@@ -626,16 +698,20 @@ function POtpScreen({ go, params }) {
         <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ background: "var(--accent-tint)" }}><ShieldCheck size={26} style={{ color: "var(--accent)" }} /></div>
         <h2 className="rg-display text-2xl font-bold">{t.otpTitle}</h2>
         <p style={{ color: "var(--muted)" }} className="text-sm -mt-2">{t.otpSubtitle} +91 {params.mobile}</p>
-        <div className="flex gap-3 mt-2">
+        <div className="flex gap-2 mt-2 justify-between">
           {otp.map((d, i) => (
             <input key={i} ref={refs[i]} value={d} maxLength={1} inputMode="numeric" onChange={(e) => update(i, e.target.value)}
-              className="w-14 h-14 text-center text-xl rg-mono font-semibold rounded-2xl" style={{ background: "var(--surface-2)", border: "1.5px solid var(--border)", color: "var(--ink)" }} />
+              className="w-12 h-14 text-center text-xl rg-mono font-semibold rounded-2xl" style={{ background: "var(--surface-2)", border: "1.5px solid var(--border)", color: "var(--ink)" }} />
           ))}
         </div>
-        <p className="text-xs rg-mono" style={{ color: "var(--amber)" }}>Demo OTP: 1234</p>
+        {error && <p className="text-xs text-red-500">{error}</p>}
         <button className="text-sm font-semibold text-left" style={{ color: "var(--accent)" }}>{t.resend}</button>
       </div>
-      <div className="pb-8"><Btn disabled={!complete} onClick={() => go("register", params)}>{t.verify}</Btn></div>
+      <div className="pb-8">
+        <Btn disabled={!complete || loading} onClick={handleVerify}>
+          {loading ? <Loader2 size={18} className="animate-spin" /> : t.verify}
+        </Btn>
+      </div>
     </div>
   );
 }
@@ -995,7 +1071,7 @@ function PInTripScreen({ go, params }) {
   const speakGuide = useVoiceGuide();
   const tripId = useRef(`RG${Date.now().toString().slice(-8)}`).current;
   const fare = params.fare || fareFor(params.vehicle);
-  useEffect(() => { speakGuide(`${t.tripCompletedVoice} ${t.paymentSuccessVoice}`); }, []);
+  useEffect(() => { speakGuide(`${t.tripCompletedTitle} ${t.paymentSuccessVoice}`); }, []);
 
   const finish = () => {
     addRide({ id: Date.now(), from: params.pickup, to: params.drop, vehicle: params.vehicle, driver: params.driver, fare, date: new Date(), rating: stars });
@@ -1588,94 +1664,35 @@ function DProfileScreen({ go }) {
             </div>
             <div className="flex-1">
               <p className="font-bold text-[16px] flex items-center gap-1.5">{driver?.name} <CheckCircle2 size={15} style={{ color: "var(--accent)" }} /></p>
-              <p className="text-xs flex items-center gap-1 mt-0.5" style={{ color: "var(--accent-dark)" }}><Star size={11} fill="var(--amber)" color="var(--amber)" /> {driver?.rating} ({trips.length} rides)</p>
-              <p className="text-xs rg-mono mt-0.5" style={{ color: "var(--accent-dark)" }}>{driver?.plate}</p>
+              <p className="text-xs flex items-center gap-1 mt-0.5" style={{ color: "var(--accent-dark)" }}><Star size={11} fill="var(--amber)" color="var(--amber)" /> {driver?.rating} · {driver?.plate}</p>
             </div>
-            <button onClick={() => setShowPhoto((s) => !s)} aria-label={t.changePhoto}><Edit3 size={15} style={{ color: "var(--accent-dark)" }} /></button>
-          </div>
-          <div className="flex gap-2 mt-3">
-            <span className="px-2.5 py-1 rounded-full text-[11px] font-bold flex items-center gap-1" style={{ background: online ? "var(--accent-grad)" : "var(--surface-2)", color: online ? "#fff" : "var(--muted)" }}>
-              <span className="w-1.5 h-1.5 rounded-full" style={{ background: online ? "#fff" : "var(--muted)" }} /> {online ? "Online" : "Offline"}
-            </span>
-            <span className="px-2.5 py-1 rounded-full text-[11px] font-bold" style={{ background: "var(--surface)" }}>{driver?.vehicleType?.name}</span>
+            <button onClick={() => setShowPhoto((s) => !s)} aria-label="Edit photo"><Edit3 size={16} style={{ color: "var(--accent-dark)" }} /></button>
           </div>
         </div>
-
         {showPhoto && (
           <div className="rounded-2xl p-4 mb-4 rg-card flex flex-col items-center">
             <PhotoUploader photo={driver?.photo} onChange={(p) => setDriver((d) => ({ ...d, photo: p }))} storageKey="driver:photo" />
           </div>
         )}
-
-        <h3 className="rg-display text-sm font-semibold mb-2">{t.about}</h3>
-        <div className="rounded-2xl p-4 mb-4 rg-card flex flex-col gap-2.5">
-          <p className="text-xs flex items-center gap-2"><MapPin size={13} style={{ color: "var(--muted)" }} /> Silchar, Assam</p>
-          <p className="text-xs flex items-center gap-2"><Phone size={13} style={{ color: "var(--muted)" }} /> +91 {driver?.mobile}</p>
-          <p className="text-xs flex items-center gap-2"><Mail size={13} style={{ color: "var(--muted)" }} /> {(driver?.name || "driver").toLowerCase().replace(/\s/g, "")}@gmail.com</p>
-          <p className="text-xs flex items-center gap-2"><CreditCard size={13} style={{ color: "var(--muted)" }} /> DL No. AS11 2018 1234567</p>
-          <p className="text-xs flex items-center gap-2"><Briefcase size={13} style={{ color: "var(--muted)" }} /> 3 {t.experience}</p>
-        </div>
-
-        <h3 className="rg-display text-sm font-semibold mb-2">{t.vehicleDetails}</h3>
-        <div className="rounded-2xl p-4 mb-4 rg-card flex items-center gap-3">
-          <div className="w-14 h-14 rounded-xl flex items-center justify-center shrink-0" style={{ background: "var(--accent-tint)" }}>
-            {driver?.vehicleType?.Icon ? <driver.vehicleType.Icon size={26} style={{ color: "var(--accent)" }} /> : <CarIcon size={26} style={{ color: "var(--accent)" }} />}
-          </div>
-          <div>
-            <p className="font-semibold text-sm">{driver?.vehicleType?.name}</p>
-            <p className="text-xs rg-mono" style={{ color: "var(--muted)" }}>{driver?.plate}</p>
-            <p className="text-xs" style={{ color: "var(--muted)" }}>Green & Black</p>
-          </div>
-        </div>
-
-        <h3 className="rg-display text-sm font-semibold mb-2">{t.yourStats}</h3>
         <div className="grid grid-cols-3 gap-2.5 mb-4">
-          <div className="rounded-2xl p-3 text-center rg-card">
-            <p className="rg-display text-lg font-bold">{trips.length}</p>
-            <p className="text-[10px]" style={{ color: "var(--muted)" }}>{t.totalRides}</p>
-          </div>
-          <div className="rounded-2xl p-3 text-center rg-card">
-            <p className="rg-display text-lg font-bold flex items-center justify-center gap-0.5">{driver?.rating} <Star size={12} fill="var(--amber)" color="var(--amber)" /></p>
-            <p className="text-[10px]" style={{ color: "var(--muted)" }}>{t.rating}</p>
-          </div>
-          <div className="rounded-2xl p-3 text-center rg-card">
-            <p className="rg-display text-lg font-bold">{completion}%</p>
-            <p className="text-[10px]" style={{ color: "var(--muted)" }}>{t.completion}</p>
-          </div>
+          <div className="rounded-2xl p-3 text-center" style={{ background: "var(--surface-2)" }}><p className="text-[11px]" style={{ color: "var(--muted)" }}>{t.totalRides}</p><p className="rg-display font-bold text-lg mt-0.5">{trips.length + 42}</p></div>
+          <div className="rounded-2xl p-3 text-center" style={{ background: "var(--surface-2)" }}><p className="text-[11px]" style={{ color: "var(--muted)" }}>{t.rating}</p><p className="rg-display font-bold text-lg mt-0.5">4.8</p></div>
+          <div className="rounded-2xl p-3 text-center" style={{ background: "var(--surface-2)" }}><p className="text-[11px]" style={{ color: "var(--muted)" }}>{t.completion}</p><p className="rg-display font-bold text-lg mt-0.5">{completion}%</p></div>
         </div>
-
-        <h3 className="rg-display text-sm font-semibold mb-2">{t.documents}</h3>
-        <div className="rounded-2xl mb-4 rg-card overflow-hidden">
-          <div className="flex items-center justify-between p-3.5" style={{ borderBottom: "1px solid var(--border)" }}>
-            <span className="text-xs font-semibold">{t.drivingLicense}</span>
-            <span className="text-[11px] font-semibold flex items-center gap-1" style={{ color: "var(--accent)" }}><CheckCircle2 size={12} /> {t.verified}</span>
-          </div>
-          <div className="flex items-center justify-between p-3.5">
-            <span className="text-xs font-semibold">{t.rcDocument}</span>
-            <span className="text-[11px] font-semibold flex items-center gap-1" style={{ color: "var(--accent)" }}><CheckCircle2 size={12} /> {t.verified}</span>
-          </div>
-        </div>
-
-        {showSettings && (
-          <div className="rounded-2xl mb-4 rg-card overflow-hidden">
-            <ProfileRow icon={theme === "dark" ? Moon : Sun} label={t.darkMode} right={<Toggle on={theme === "dark"} onClick={() => setTheme(theme === "dark" ? "light" : "dark")} />} />
-            <ProfileRow icon={Bell} label={t.rideAnnouncements} right={<Toggle on={announceRequests} onClick={() => setAnnounceRequests((v) => !v)} />} />
-            <EasyModeRow />
-            <ProfileRow icon={Globe} label={t.language} right={
-              <div className="flex gap-1.5">
-                {["en", "hi", "bn"].map((l) => (
-                  <button key={l} onClick={() => setLang(l)} className="px-2.5 py-1 rounded-full text-[11px] font-bold rg-mono" style={{ background: lang === l ? "var(--accent)" : "var(--surface-2)", color: lang === l ? "#fff" : "var(--muted)" }}>{l.toUpperCase()}</button>
-                ))}
-              </div>} />
-            <SwitchRoleRow />
-            <button onClick={() => go("login")} className="w-full flex items-center gap-3 py-3.5 px-1 font-semibold" style={{ color: "var(--red)" }}><LogOut size={18} /> {t.logout}</button>
-          </div>
-        )}
-
-        <div className="flex gap-3">
-          <button onClick={() => setOnline((o) => !o)} className="flex-1 rounded-2xl py-3 font-semibold text-sm" style={{ background: "var(--surface-2)" }}>{online ? t.goOffline : t.goOnline}</button>
-          <button className="flex-1 rounded-2xl py-3 font-semibold text-sm" style={{ background: "var(--red)", color: "#fff" }}>{t.help}</button>
-        </div>
+        <ProfileRow icon={theme === "dark" ? Moon : Sun} label={t.darkMode} right={<Toggle on={theme === "dark"} onClick={() => setTheme(theme === "dark" ? "light" : "dark")} />} />
+        <ProfileRow icon={Volume2} label={t.rideAnnouncements} right={<Toggle on={announceRequests} onClick={() => setAnnounceRequests((v) => !v)} />} />
+        <EasyModeRow />
+        <ProfileRow icon={Globe} label={t.language} right={
+          <div className="flex gap-1.5">
+            {["en", "hi", "bn"].map((l) => (
+              <button key={l} onClick={() => setLang(l)} className="px-2.5 py-1 rounded-full text-[11px] font-bold rg-mono" style={{ background: lang === l ? "var(--accent)" : "var(--surface-2)", color: lang === l ? "#fff" : "var(--muted)" }}>{l.toUpperCase()}</button>
+            ))}
+          </div>} />
+        <ProfileRow icon={ShieldCheck} label={t.drivingLicense} right={<span className="text-xs font-semibold px-2.5 py-1 rounded-full" style={{ background: "var(--accent-tint)", color: "var(--accent-dark)" }}>{t.verified}</span>} />
+        <ProfileRow icon={Package} label={t.rcDocument} right={<span className="text-xs font-semibold px-2.5 py-1 rounded-full" style={{ background: "var(--accent-tint)", color: "var(--accent-dark)" }}>{t.verified}</span>} />
+        <ProfileRow icon={PhoneCall} label={t.support} right={<ChevronRight size={16} style={{ color: "var(--muted)" }} />} />
+        <SwitchRoleRow />
+        <button onClick={() => go("login")} className="w-full flex items-center gap-3 py-4 mt-2 font-semibold" style={{ color: "var(--red)" }}><LogOut size={18} /> {t.logout}</button>
       </div>
     </div>
   );
@@ -1684,21 +1701,21 @@ function DProfileScreen({ go }) {
 function DBottomNav({ tab, setTab }) {
   const t = useT();
   const items = [
-    { id: "home", label: "Home", Icon: Navigation2 },
-    { id: "earnings", label: "Earnings", Icon: TrendingUp },
+    { id: "home", label: t.home, Icon: HomeIcon },
     { id: "bookings", label: t.bookings, Icon: History },
     { id: "wallet", label: t.wallet, Icon: Wallet },
-    { id: "profile", label: "Profile", Icon: User },
+    { id: "earnings", label: "Earnings", Icon: TrendingUp },
+    { id: "profile", label: t.profile, Icon: User },
   ];
   return (
     <div className="flex justify-around items-center py-2.5 shrink-0" style={{ background: "var(--surface)", borderTop: "1px solid var(--border)" }}>
       {items.map((it) => {
         const active = tab === it.id;
         return (
-          <button key={it.id} onClick={() => setTab(it.id)} className="flex flex-col items-center gap-1 px-2.5 py-1.5 rounded-2xl transition-colors duration-200"
+          <button key={it.id} onClick={() => setTab(it.id)} className="flex flex-col items-center gap-1 px-3 py-1.5 rounded-2xl transition-colors duration-200"
             style={{ background: active ? "var(--accent-tint)" : "transparent" }}>
-            <it.Icon size={18} style={{ color: active ? "var(--accent)" : "var(--muted)", transition: "color .2s" }} />
-            <span className="text-[9px] font-medium" style={{ color: active ? "var(--accent)" : "var(--muted)" }}>{it.label}</span>
+            <it.Icon size={19} style={{ color: active ? "var(--accent)" : "var(--muted)", transition: "color .2s" }} />
+            <span className="text-[10px] font-medium" style={{ color: active ? "var(--accent)" : "var(--muted)" }}>{it.label}</span>
           </button>
         );
       })}
@@ -1710,13 +1727,13 @@ function DriverShell() {
   const [screen, setScreen] = useState("login");
   const [params, setParams] = useState({});
   const [tab, setTab] = useState("home");
-  const go = useCallback((s, p = {}) => { setScreen(s); setParams(p); if (["home", "earnings", "bookings", "wallet", "profile"].includes(s)) setTab(s); }, []);
+  const go = useCallback((s, p = {}) => { setScreen(s); setParams(p); if (["home", "bookings", "wallet", "earnings", "profile"].includes(s)) setTab(s); }, []);
   const authScreens = ["login", "otp", "register"];
   let body;
   if (authScreens.includes(screen)) {
     body = screen === "login" ? <DLoginScreen go={go} /> : screen === "otp" ? <DOtpScreen go={go} params={params} /> : <DRegisterScreen go={go} params={params} />;
   } else {
-    body = tab === "home" ? <DHomeScreen /> : tab === "earnings" ? <DEarningsScreen /> : tab === "bookings" ? <DBookingsScreen /> : tab === "wallet" ? <DWalletScreen /> : <DProfileScreen go={go} />;
+    body = tab === "home" ? <DHomeScreen /> : tab === "bookings" ? <DBookingsScreen /> : tab === "wallet" ? <DWalletScreen /> : tab === "earnings" ? <DEarningsScreen /> : <DProfileScreen go={go} />;
   }
   const showNav = !authScreens.includes(screen);
   return (
@@ -1728,44 +1745,55 @@ function DriverShell() {
   );
 }
 
-/* --------------------------------- Root --------------------------------- */
-export default function RideGo() {
+/* =========================== MAIN APP SHELL ============================ */
+
+export default function App() {
+  const [role, setRole] = useState(null); // null | "passenger" | "driver"
+  const [user, setUser] = useState(null);
+  const [driver, setDriver] = useState(null);
+  const [rides, setRides] = useState([]);
+  const [trips, setTrips] = useState([]);
   const [theme, setTheme] = useState("light");
   const [lang, setLang] = useState("en");
   const [voiceGuide, setVoiceGuide] = useState(false);
-  const [lastSpoken, setLastSpoken] = useState("");
   const [announceRequests, setAnnounceRequests] = useState(true);
   const [easyMode, setEasyMode] = useState(false);
-  const [role, setRole] = useState(null);
-
-  const [user, setUser] = useState(null);
-  const [rides, setRides] = useState([]);
-  const addRide = useCallback((r) => setRides((prev) => [r, ...prev]), []);
-
-  const [driver, setDriver] = useState(null);
   const [online, setOnline] = useState(false);
-  const [trips, setTrips] = useState([]);
-  const addTrip = useCallback((t) => setTrips((prev) => [t, ...prev]), []);
+  const [lastSpoken, setLastSpoken] = useState(null);
 
-  const accentRole = role === "driver" ? "driver" : role === "passenger" ? "passenger" : "brand";
-  const vars = { ...BASE_THEME[theme], ...accentVars(accentRole) };
+  const addRide = useCallback((r) => setRides((s) => [r, ...s]), []);
+  const addTrip = useCallback((tr) => setTrips((s) => [tr, ...s]), []);
 
-  const ctxValue = {
-    theme, setTheme, lang, setLang, voiceGuide, setVoiceGuide, lastSpoken, setLastSpoken, announceRequests, setAnnounceRequests,
-    easyMode, setEasyMode, role, setRole,
-    user, setUser, rides, addRide, driver, setDriver, online, setOnline, trips, addTrip,
-  };
+  const themeVars = BASE_THEME[theme] || BASE_THEME.light;
+  const roleAccent = accentVars(role || "brand");
 
   return (
-    <AppCtx.Provider value={ctxValue}>
-      <div className={`rg-root w-full h-screen flex items-center justify-center ${easyMode ? "rg-easy" : ""}`} style={{ ...vars, background: theme === "dark" ? "#050506" : "#EDEAE7" }}>
-        <FontStyles />
-        <div className="relative w-full h-full sm:h-[850px] sm:w-[400px] sm:rounded-[2.5rem] overflow-hidden flex flex-col" style={{ background: "var(--bg)", boxShadow: "var(--shadow)" }}>
-          <ErrorBoundary>
-            {role === null ? <RoleSelect /> : role === "passenger" ? <PassengerShell /> : <DriverShell />}
-          </ErrorBoundary>
+    <ErrorBoundary>
+      <AppCtx.Provider value={{
+        role, setRole, user, setUser, driver, setDriver,
+        rides, addRide, trips, addTrip,
+        theme, setTheme, lang, setLang,
+        voiceGuide, setVoiceGuide, announceRequests, setAnnounceRequests,
+        easyMode, setEasyMode, online, setOnline, lastSpoken, setLastSpoken
+      }}>
+        <div className="rg-root w-full h-screen flex items-center justify-center overflow-hidden" style={{ ...themeVars, ...roleAccent }}>
+          <FontStyles />
+          <div className="w-full h-full max-w-md mx-auto flex flex-col relative shadow-2xl overflow-hidden" style={{ background: "var(--bg)" }}>
+            <div className={`w-full h-full flex flex-col min-h-0 ${easyMode ? "rg-easy" : ""}`}>
+              {!role ? <RoleSelect /> : role === "passenger" ? <PassengerShell /> : <DriverShell />}
+            </div>
+          </div>
         </div>
-      </div>
-    </AppCtx.Provider>
+      </AppCtx.Provider>
+    </ErrorBoundary>
   );
 }
+                  
+        
+            
+
+
+                
+        
+               
+        
