@@ -690,7 +690,16 @@ function POtpScreen({ go, params }) {
     setError("");
     try {
       const code = otp.join("");
-      await params.confirmationResult.confirm(code);
+      const result = await params.confirmationResult.confirm(code);
+
+const loggedInUser = result.user;
+
+await setDoc(doc(db, "users", loggedInUser.uid), {
+  uid: loggedInUser.uid,
+  phoneNumber: loggedInUser.phoneNumber,
+  createdAt: serverTimestamp(),
+  role: "passenger"
+}, { merge: true });
       go("register", params);
     } catch (err) {
       console.error(err);
