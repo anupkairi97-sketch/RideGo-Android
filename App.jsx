@@ -854,7 +854,9 @@ function PHomeScreen({ go }) {
 
 function PVehicleScreen({ go, params }) {
   const t = useT();
+  const { user } = useApp();
   const [selected, setSelected] = useState(VEHICLES[0].id);
+  const [booking, setBooking] = useState(false);
   const [payment, setPayment] = useState("cash");
   const vehicle = VEHICLES.find((v) => v.id === selected);
   const speakGuide = useVoiceGuide();
@@ -902,8 +904,28 @@ function PVehicleScreen({ go, params }) {
           <span className="text-sm" style={{ color: "var(--muted)" }}>{t.estFare}</span>
           <span className="rg-display text-xl font-bold">₹{fareFor(vehicle)}</span>
         </div>
-        <Btn onClick={() => go("searching", { ...params, vehicle, payment })}>{t.bookRide}</Btn>
-      </div>
+         <Btn disabled={booking} onClick={async () => {
+  setBooking(true);
+  try {
+    const rideId = await createRideRequest({
+      pickup: params.pickup,
+      drop: params.drop,
+      vehicleId: vehicle.id,
+      vehicleName: vehicle.name,
+      vehicleEta: vehicle.eta,
+      fare: fareFor(vehicle),
+      payment,
+      distanceKm: DISTANCE_KM,
+      passengerName: user?.name || "Passenger",
+      passengerMobile: user?.mobile || "",
+    });
+    go("searching", { ...params, vehicle, payment, rideId });
+  } catch (e) {
+    go("searching", { ...params, vehicle, payment, rideId: null });
+  }
+}}>
+  {booking ? "Booking…" : t.bookRide}
+</Btn>
     </div>
   );
 }
