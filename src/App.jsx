@@ -3,6 +3,7 @@ import { BarChart, Bar, XAxis, ResponsiveContainer, Tooltip, CartesianGrid } fro
 import { MapContainer, TileLayer, Marker, Polyline } from "react-leaflet";
 import L from "leaflet";
 import { TextToSpeech } from "@capacitor-community/text-to-speech";
+import { db, createRideRequest, watchRide, watchSearchingRequests, acceptRide, markArrived, startTrip, completeRide } from "./firebase";
 import "leaflet/dist/leaflet.css";
 import "./firebase";
 import {
