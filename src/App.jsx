@@ -1436,10 +1436,14 @@ function DHomeScreen() {
   useEffect(() => { speakGuide(t.driverHomeVoice); }, []);
 
   useEffect(() => {
-    if (!online || request || activeTrip) return;
-    const tmr = setTimeout(() => setRequest(MOCK_REQUESTS[Math.floor(Math.random() * MOCK_REQUESTS.length)]), 3000);
-    return () => clearTimeout(tmr);
-  }, [online, request, activeTrip]);
+    if (!online || activeTrip) { setRequest(null); return; }
+    const unsub = watchSearchingRequests((r) => setRequest(r));
+    return () => unsub && unsub();
+  }, [online, activeTrip]);
+    
+    
+   
+  
 
   useEffect(() => {
     if (!request) return;
