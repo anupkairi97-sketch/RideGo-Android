@@ -1446,7 +1446,7 @@ function DHomeScreen() {
   
 
   useEffect(() => {
-    if (!request) return;
+    if (!request) return;const
     const fare = Math.round(15 + request.distanceKm * 12);
     const etaMin = Math.round(request.distanceKm * 3);
     const vName = driver?.vehicleType?.name || "";
@@ -1454,11 +1454,31 @@ function DHomeScreen() {
     announce(line);
   }, [request]);
 
-  const accept = (fare) => { setActiveTrip({ ...request, fare }); setTripStage("toPickup"); setRequest(null); };
+   const accept = async (fare) => {
+    if (request.id) {
+      try {
+        await acceptRide(request.id, {
+          name: driver?.name, plate: driver?.plate, rating: driver?.rating,
+          mobile: driver?.mobile, photo: driver?.photo || null,
+        });
+      } catch (e) {}
+    }
+    setActiveTrip({ ...request, fare }); setTripStage("toPickup"); setRequest(null);
+  };
   const reject = () => setRequest(null);
-  const advance = () => {
-    if (tripStage === "toPickup") setTripStage("inTrip");
-    else { addTrip({ id: Date.now(), ...activeTrip, date: new Date() }); setActiveTrip(null); }
+  const advance = async () => {
+    if (tripStage === "toPickup") {
+      if (activeTrip.id) await markArrived(activeTrip.id).catch(() => {});
+      setTripStage("arrived");
+    } else if (tripStage === "arrived") {
+      if (activeTrip.id) await startTrip(activeTrip.id).catch(() => {});
+      setTripStage("inTrip");
+    } else {
+      if (activeTrip.id) await completeRide(activeTrip.id).catch(() => {});
+      addTrip({ id: Date.now(), ...activeTrip, date: new Date() });
+      setActiveTrip(null);
+      setTripStage("toPickup");
+    }
   };
 
   if (activeTrip) {
