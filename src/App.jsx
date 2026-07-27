@@ -1027,9 +1027,9 @@ function PInTripScreen({ go, params }) {
 
   const finish = () => {
     addRide({ id: Date.now(), from: params.pickup, to: params.drop, vehicle: params.vehicle, driver: params.driver, fare, date: new Date(), rating: stars });
+    if (params.rideId) completeRide(params.rideId).catch(() => {});
     go("home");
   };
-
   const downloadBill = () => {
     const receipt = [
       "RideGo — Trip Receipt", "",
