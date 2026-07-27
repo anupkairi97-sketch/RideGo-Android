@@ -1482,9 +1482,14 @@ function DHomeScreen() {
   };
 
   if (activeTrip) {
+    const label = tripStage === "toPickup" ? "Arrived at pickup" : tripStage === "arrived" ? "Start trip" : "Complete trip";
+    const title = tripStage === "toPickup" ? "Head to pickup" : tripStage === "arrived" ? "Waiting for passenger" : "Trip in progress";
     return (
       <div className="flex flex-col h-full rg-anim-in">
-        <TopBar title={tripStage === "toPickup" ? "Head to pickup" : "Trip in progress"} />
+        <TopBar title={title} />
+    
+      
+       
         <div className="px-6"><RouteVisual /></div>
         <div className="px-6 pt-4 flex-1 overflow-y-auto rg-scroll">
           <div className="rounded-2xl p-4 mb-3 rg-card">
