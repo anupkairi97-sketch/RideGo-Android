@@ -821,6 +821,23 @@ function PSearchingScreen({ go, params }) {
   const speakGuide = useVoiceGuide();
   useEffect(() => {
     speakGuide(t.rideBookedVoice);
+
+    if (params.rideId) {
+      const unsub = watchRide(params.rideId, (data) => {
+        if (data && data.status === "accepted") {
+          go("tracking", {
+            ...params,
+            driver: {
+              name: data.driverName, plate: data.driverPlate, rating: data.driverRating,
+              mobile: data.driverMobile, photo: data.driverPhoto,
+              otp: 1000 + Math.floor(Math.random() * 8999),
+            },
+          });
+        }
+      });
+      return () => unsub();
+    }
+
     const id = setTimeout(() => {
       const driver = {
         name: DRIVER_NAMES[Math.floor(Math.random() * DRIVER_NAMES.length)],
@@ -832,17 +849,6 @@ function PSearchingScreen({ go, params }) {
     }, 2400);
     return () => clearTimeout(id);
   }, []);
-  return (
-    <div className="flex flex-col h-full items-center justify-center px-8 text-center rg-anim-in">
-      <div className="relative w-24 h-24 mb-6 flex items-center justify-center">
-        <div className="absolute inset-0 rounded-full rg-glow" style={{ background: "var(--accent-tint)" }} />
-        <params.vehicle.Icon size={34} style={{ color: "var(--accent)" }} />
-      </div>
-      <h2 className="rg-display text-xl font-bold mb-1">{t.searching}</h2>
-      <p className="text-sm" style={{ color: "var(--muted)" }}>{params.pickup}</p>
-    </div>
-  );
-}
 
 function SOSSheet({ onClose }) {
   const t = useT();
