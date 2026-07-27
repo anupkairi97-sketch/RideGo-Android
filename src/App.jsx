@@ -923,9 +923,29 @@ function PTrackingScreen({ go, params }) {
   const [showFare, setShowFare] = useState(false);
   const fare = fareFor(vehicle);
   const speakGuide = useVoiceGuide();
+  const spokenArrived = useRef(false);
+  const spokenOnTrip = useRef(false);
 
   useEffect(() => {
     speakGuide(t.driverOnWayVoice);
+
+    if (params.rideId) {
+      const unsub = watchRide(params.rideId, (data) => {
+        if (!data) return;
+        if (data.status === "arrived" && !spokenArrived.current) {
+          spokenArrived.current = true;
+          setArrived(true);
+          speakGuide(t.driverArrivedVoice);
+        }
+        if (data.status === "ontrip" && !spokenOnTrip.current) {
+          spokenOnTrip.current = true;
+          speakGuide(t.tripStartedVoice);
+          go("ontrip", { ...params, fare });
+        }
+      });
+      return () => unsub();
+    }
+
     const id1 = setTimeout(() => { setArrived(true); speakGuide(t.driverArrivedVoice); }, 6000);
     const id2 = setTimeout(() => { speakGuide(t.tripStartedVoice); go("ontrip", { ...params, fare }); }, 10000);
     return () => { clearTimeout(id1); clearTimeout(id2); };
