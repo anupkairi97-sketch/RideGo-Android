@@ -1504,7 +1504,7 @@ function DHomeScreen() {
           </div>
           <a href={`tel:${activeTrip.mobile.replace(/\s/g, "")}`} className="flex items-center gap-2 mt-3 text-sm font-semibold" style={{ color: "var(--accent)" }}><PhoneCall size={15} /> Call {activeTrip.mobile}</a>
         </div>
-        <div className="px-6 pb-8 shrink-0"><Btn onClick={advance}>{tripStage === "toPickup" ? "Arrived — start trip" : "Complete trip"}</Btn></div>
+        <div className="px-6 pb-8 shrink-0"><Btn onClick={advance}>{label}</Btn></div>
       </div>
     );
   }
