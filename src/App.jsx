@@ -1446,8 +1446,8 @@ function DHomeScreen() {
   
 
   useEffect(() => {
-    if (!request) return;const
-    const fare = Math.round(15 + request.distanceKm * 12);
+    if (!request) return;
+const fare = request.fare || Math.round(15 + request.distanceKm * 12);
     const etaMin = Math.round(request.distanceKm * 3);
     const vName = driver?.vehicleType?.name || "";
     const line = `${t.voiceNewRequest} ${t.voicePickup}: ${request.pickup}. ${t.voiceDestination}: ${request.drop}. ${t.voiceDistance}: ${request.distanceKm} km. ${t.voiceEta}: ${etaMin} ${t.minutes}. ${t.voiceFare}: ₹${fare}. ${t.voiceVehicle}: ${vName}.`;
