@@ -1494,7 +1494,9 @@ function DHomeScreen() {
         <div className="px-6 pt-4 flex-1 overflow-y-auto rg-scroll">
           <div className="rounded-2xl p-4 mb-3 rg-card">
             <p className="text-xs mb-1" style={{ color: "var(--muted)" }}>Passenger</p>
-            <p className="font-semibold text-[15px] mb-2">{activeTrip.passenger}</p>
+            <p className="font-semibold text-[15px] mb-2">
+  {activeTrip.passenger || activeTrip.passengerName}
+</p>
             <div className="flex items-center gap-2 text-sm mb-2"><MapPinned size={14} style={{ color: "var(--accent)" }} /> {activeTrip.pickup}</div>
             <div className="flex items-center gap-2 text-sm"><Flag size={14} style={{ color: "var(--red)" }} /> {activeTrip.drop}</div>
           </div>
