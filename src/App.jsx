@@ -1397,7 +1397,7 @@ function DRegisterScreen({ go, params }) {
 }
 
 function RequestSheet({ request, onAccept, onReject }) {
-  const fare = Math.round(15 + request.distanceKm * 12);
+  const fare = request.fare || Math.round(15 + request.distanceKm * 12);
   return (
     <div className="absolute inset-x-0 bottom-0 z-10 rg-sheet-in">
       <div className="mx-4 mb-4 rounded-3xl p-5" style={{ background: "var(--surface)", border: "2px solid var(--accent)", boxShadow: "0 20px 40px -14px var(--accent)" }}>
