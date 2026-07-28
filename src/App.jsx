@@ -1509,6 +1509,7 @@ const fare = request.fare || Math.round(15 + request.distanceKm * 12);
   <Btn onClick={advance}>{label}</Btn>
 </div>
 </div>
+</div>
 );
 }
 
