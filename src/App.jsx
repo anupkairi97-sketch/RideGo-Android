@@ -1505,7 +1505,12 @@ const fare = request.fare || Math.round(15 + request.distanceKm * 12);
             <div className="rounded-2xl p-3.5" style={{ background: "var(--surface-2)" }}><p className="text-[11px]" style={{ color: "var(--muted)" }}>Distance</p><p className="rg-mono font-semibold text-lg">{activeTrip.distanceKm} km</p></div>
           </div>
           <a href={`tel:${(activeTrip.mobile || activeTrip.passengerMobile || "").replace(/\s/g, "")}`} className="flex items-center gap-2 mt-3 text-sm font-semibold" style={{ color: "var(--accent)" }}><PhoneCall size={15} /> Call {activeTrip.mobile || activeTrip.passengerMobile}</a>
-  }
+          <div className="px-6 pb-8 shrink-0">
+  <Btn onClick={advance}>{label}</Btn>
+</div>
+</div>
+);
+}
 
   return (
     <div className="flex flex-col h-full rg-anim-in relative">
