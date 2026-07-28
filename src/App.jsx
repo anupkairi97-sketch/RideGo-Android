@@ -1417,7 +1417,7 @@ function RequestSheet({ request, onAccept, onReject }) {
           <Btn onClick={() => onAccept(fare)}>Accept</Btn>
           <Btn variant="outline" onClick={onReject}>Reject</Btn>
         </div>
-        <a href={`tel:${request.mobile.replace(/\s/g, "")}`}>
+        <a href={`tel:${(request.mobile || "").replace(/\s/g, "")}`}>
           <Btn variant="ghost" className="!rounded-2xl"><PhoneCall size={16} /> Call passenger · {request.mobile}</Btn>
         </a>
       </div>
