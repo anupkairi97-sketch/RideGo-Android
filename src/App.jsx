@@ -1735,42 +1735,7 @@ function DProfileScreen({ go }) {
   );
 }
 
-function DWalletScreen() {
-  const { trips } = useApp();
-  const t = useT();
-  const balance = trips.reduce((s, tr) => s + tr.fare, 0) + 1240;
 
-  return (
-    <div className="flex flex-col h-full rg-anim-in">
-      <div className="flex items-center justify-between px-5 pt-5 pb-3 shrink-0">
-        <h1 className="rg-display text-[17px] font-semibold">{t.wallet || "Wallet"}</h1>
-      </div>
-      <div className="flex-1 overflow-y-auto rg-scroll px-5 pb-4">
-        <div className="rounded-2xl p-5 mb-4" style={{ background: "var(--accent-grad)", boxShadow: "0 16px 34px -14px var(--accent)" }}>
-          <p className="text-xs" style={{ color: "rgba(255,255,255,0.85)" }}>{t.walletBalance || "Wallet Balance"}</p>
-          <p className="rg-display text-3xl font-bold text-white mt-1">₹{balance}</p>
-        </div>
-        <button className="w-full py-3 rounded-xl font-semibold flex items-center justify-center gap-2" style={{ background: "var(--surface-2)", color: "var(--text)" }}>
-          <Wallet size={16} style={{ color: "var(--accent)" }} /> {t.addMoney || "Add Money"}
-        </button>
-        <h3 className="rg-display font-semibold text-sm mt-5 mb-2">{t.rideHistory || "Recent Earnings"}</h3>
-        {trips.length === 0 ? (
-          <p className="text-sm text-center py-8" style={{ color: "var(--muted)" }}>No earnings yet.</p>
-        ) : (
-          trips.map((tr) => (
-            <div key={tr.id} className="flex items-center justify-between rounded-2xl p-3.5 mb-2" style={{ background: "var(--surface-2)" }}>
-              <div className="flex items-center gap-2">
-                <CarIcon size={16} style={{ color: "var(--accent)" }} />
-                <span className="text-sm font-semibold">{tr.passenger || "Trip"}</span>
-              </div>
-              <span className="rg-mono font-semibold text-sm" style={{ color: "var(--accent)" }}>+₹{tr.fare}</span>
-            </div>
-          ))
-        )}
-      </div>
-    </div>
-  );
-}
 
 
 function DBottomNav({ tab, setTab }) {
