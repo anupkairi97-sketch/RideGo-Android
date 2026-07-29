@@ -828,8 +828,11 @@ function PSearchingScreen({ go, params }) {
           go("tracking", {
             ...params,
             driver: {
-              name: data.driverName, plate: data.driverPlate, rating: data.driverRating,
-              mobile: data.driverMobile, photo: data.driverPhoto,
+              name: data.driverName,
+              plate: data.driverPlate,
+              rating: data.driverRating,
+              mobile: data.driverMobile,
+              photo: data.driverPhoto,
               otp: 1000 + Math.floor(Math.random() * 8999),
             },
           });
@@ -847,8 +850,12 @@ function PSearchingScreen({ go, params }) {
       };
       go("tracking", { ...params, driver });
     }, 2400);
+
     return () => clearTimeout(id);
   }, []);
+
+  return null;
+}
 
 function SOSSheet({ onClose }) {
   const t = useT();
