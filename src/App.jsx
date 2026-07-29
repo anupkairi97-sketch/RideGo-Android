@@ -1627,18 +1627,22 @@ function DEarningsScreen() {
 }
 
 function DProfileScreen({ go }) {
-  const t = useT();
   const { driver, setDriver, theme, setTheme, trips, lang, setLang, announceRequests, setAnnounceRequests, online, setOnline } = useApp();
   const [showPhoto, setShowPhoto] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const completion = trips.length ? Math.round(90 + Math.random() * 10) : 98;
+  const t = useT();
 
   return (
     <div className="flex flex-col h-full rg-anim-in">
       <div className="flex items-center justify-between px-5 pt-5 pb-3 shrink-0">
-        <button className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: "var(--surface-2)" }}><ChevronLeft size={18} /></button>
+        <button className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: "var(--surface-2)" }} onClick={() => go("home")}>
+          <ArrowLeft size={18} />
+        </button>
         <h1 className="rg-display text-[17px] font-semibold">Driver Profile</h1>
-        <button onClick={() => setShowSettings((s) => !s)}><MoreHorizontal size={20} /></button>
+        <button onClick={() => setShowSettings((s) => !s)} aria-label="Settings">
+          <MoreHorizontal size={20} />
+        </button>
       </div>
 
       <div className="flex-1 overflow-y-auto rg-scroll px-5 pb-4">
@@ -1648,17 +1652,19 @@ function DProfileScreen({ go }) {
               {driver?.photo ? <img src={driver.photo} className="w-full h-full object-cover" alt="" /> : (driver?.name || "D")[0]}
             </div>
             <div className="flex-1">
-              <p className="font-bold text-[16px] flex items-center gap-1.5">{driver?.name} <CheckCircle2 size={15} style={{ color: "var(--accent)" }} /></p>
-              <p className="text-xs flex items-center gap-1 mt-0.5" style={{ color: "var(--accent-dark)" }}><Star size={11} fill="var(--amber)" color="var(--amber)" /> {driver?.rating} ({trips.length} rides)</p>
-              <p className="text-xs rg-mono mt-0.5" style={{ color: "var(--accent-dark)" }}>{driver?.plate}</p>
+              <p className="font-bold text-[16px] flex items-center gap-1.5">
+                {driver?.name || "Driver"} <CheckCircle2 size={15} style={{ color: "var(--accent)" }} />
+              </p>
+              <p className="text-xs flex items-center gap-1 mt-0.5" style={{ color: "var(--muted)" }}>
+                <Phone size={13} /> +91 {driver?.mobile || ""}
+              </p>
+              <p className="text-xs rg-mono mt-0.5" style={{ color: "var(--accent-dark)" }}>
+                {driver?.plate || "AS-01-XX-0000"}
+              </p>
             </div>
-            <button onClick={() => setShowPhoto((s) => !s)} aria-label={t.changePhoto}><Edit3 size={15} style={{ color: "var(--accent-dark)" }} /></button>
-          </div>
-          <div className="flex gap-2 mt-3">
-            <span className="px-2.5 py-1 rounded-full text-[11px] font-bold flex items-center gap-1" style={{ background: online ? "var(--accent-grad)" : "var(--surface-2)", color: online ? "#fff" : "var(--muted)" }}>
-              <span className="w-1.5 h-1.5 rounded-full" style={{ background: online ? "#fff" : "var(--muted)" }} /> {online ? "Online" : "Offline"}
-            </span>
-            <span className="px-2.5 py-1 rounded-full text-[11px] font-bold" style={{ background: "var(--surface)" }}>{driver?.vehicleType?.name}</span>
+            <button onClick={() => setShowPhoto((s) => !s)} aria-label={t.changePhoto}>
+              <Edit3 size={15} style={{ color: "var(--accent)" }} />
+            </button>
           </div>
         </div>
 
@@ -1668,79 +1674,97 @@ function DProfileScreen({ go }) {
           </div>
         )}
 
-        <h3 className="rg-display text-sm font-semibold mb-2">{t.about}</h3>
+        <h3 className="rg-display font-semibold text-sm mb-2">{t.about || "About"}</h3>
         <div className="rounded-2xl p-4 mb-4 rg-card flex flex-col gap-2.5">
-          <p className="text-xs flex items-center gap-2"><MapPin size={13} style={{ color: "var(--muted)" }} /> Silchar, Assam</p>
-          <p className="text-xs flex items-center gap-2"><Phone size={13} style={{ color: "var(--muted)" }} /> +91 {driver?.mobile}</p>
-          <p className="text-xs flex items-center gap-2"><Mail size={13} style={{ color: "var(--muted)" }} /> {(driver?.name || "driver").toLowerCase().replace(/\s/g, "")}@gmail.com</p>
-          <p className="text-xs flex items-center gap-2"><CreditCard size={13} style={{ color: "var(--muted)" }} /> DL No. AS11 2018 1234567</p>
-          <p className="text-xs flex items-center gap-2"><Briefcase size={13} style={{ color: "var(--muted)" }} /> 3 {t.experience}</p>
+          <p className="text-xs flex items-center gap-2" style={{ color: "var(--muted)" }}>
+            <MapPin size={13} /> {driver?.city || "Silchar, Assam"}
+          </p>
+          <p className="text-xs flex items-center gap-2" style={{ color: "var(--muted)" }}>
+            <Mail size={13} /> {driver?.email || "driver@ridego.in"}
+          </p>
+          <p className="text-xs flex items-center gap-2" style={{ color: "var(--muted)" }}>
+            <CreditCard size={13} /> DL Verified
+          </p>
+          <p className="text-xs flex items-center gap-2" style={{ color: "var(--muted)" }}>
+            <Briefcase size={13} /> {driver?.experience || "3 Years Experience"}
+          </p>
         </div>
 
-        <h3 className="rg-display text-sm font-semibold mb-2">{t.vehicleDetails}</h3>
+        <h3 className="rg-display font-semibold text-sm mb-2">{t.vehicleDetails || "Vehicle Details"}</h3>
         <div className="rounded-2xl p-4 mb-4 rg-card flex items-center gap-3">
           <div className="w-14 h-14 rounded-xl flex items-center justify-center shrink-0" style={{ background: "var(--accent-tint)" }}>
-            {driver?.vehicleType?.Icon ? <driver.vehicleType.Icon size={26} style={{ color: "var(--accent)" }} /> : <CarIcon size={26} style={{ color: "var(--accent)" }} />}
+            <CarIcon size={26} style={{ color: "var(--accent)" }} />
           </div>
           <div>
-            <p className="font-semibold text-sm">{driver?.vehicleType?.name}</p>
-            <p className="text-xs rg-mono" style={{ color: "var(--muted)" }}>{driver?.plate}</p>
-            <p className="text-xs" style={{ color: "var(--muted)" }}>Green & Black</p>
+            <p className="font-semibold text-sm">{driver?.vehicleType?.name || "Sedan / Hatchback"}</p>
+            <p className="text-xs rg-mono" style={{ color: "var(--muted)" }}>{driver?.plate || "AS-01-XX-0000"}</p>
+            <p className="text-xs" style={{ color: "var(--muted)" }}>{driver?.vehicleColor || "White & Clean"}</p>
           </div>
         </div>
 
-        <h3 className="rg-display text-sm font-semibold mb-2">{t.yourStats}</h3>
+        <h3 className="rg-display font-semibold text-sm mb-2">{t.yourStats || "Your Stats"}</h3>
         <div className="grid grid-cols-3 gap-2.5 mb-4">
           <div className="rounded-2xl p-3 text-center rg-card">
             <p className="rg-display text-lg font-bold">{trips.length}</p>
-            <p className="text-[10px]" style={{ color: "var(--muted)" }}>{t.totalRides}</p>
+            <p className="text-[10px]" style={{ color: "var(--muted)" }}>{t.totalRides || "Total Rides"}</p>
           </div>
           <div className="rounded-2xl p-3 text-center rg-card">
-            <p className="rg-display text-lg font-bold flex items-center justify-center gap-0.5">{driver?.rating} <Star size={12} fill="var(--amber)" color="var(--amber)" /></p>
-            <p className="text-[10px]" style={{ color: "var(--muted)" }}>{t.rating}</p>
+            <p className="rg-display text-lg font-bold flex items-center justify-center gap-0.5">
+              {driver?.rating || "4.8"} <Star size={12} fill="var(--amber)" color="var(--amber)" />
+            </p>
+            <p className="text-[10px]" style={{ color: "var(--muted)" }}>{t.rating || "Rating"}</p>
           </div>
           <div className="rounded-2xl p-3 text-center rg-card">
             <p className="rg-display text-lg font-bold">{completion}%</p>
-            <p className="text-[10px]" style={{ color: "var(--muted)" }}>{t.completion}</p>
+            <p className="text-[10px]" style={{ color: "var(--muted)" }}>{t.acceptance || "Acceptance"}</p>
           </div>
         </div>
 
-        <h3 className="rg-display text-sm font-semibold mb-2">{t.documents}</h3>
-        <div className="rounded-2xl mb-4 rg-card overflow-hidden">
-          <div className="flex items-center justify-between p-3.5" style={{ borderBottom: "1px solid var(--border)" }}>
-            <span className="text-xs font-semibold">{t.drivingLicense}</span>
-            <span className="text-[11px] font-semibold flex items-center gap-1" style={{ color: "var(--accent)" }}><CheckCircle2 size={12} /> {t.verified}</span>
-          </div>
-          <div className="flex items-center justify-between p-3.5">
-            <span className="text-xs font-semibold">{t.rcDocument}</span>
-            <span className="text-[11px] font-semibold flex items-center gap-1" style={{ color: "var(--accent)" }}><CheckCircle2 size={12} /> {t.verified}</span>
-          </div>
-        </div>
-
-        {showSettings && (
-          <div className="rounded-2xl mb-4 rg-card overflow-hidden">
-            <ProfileRow icon={theme === "dark" ? Moon : Sun} label={t.darkMode} right={<Toggle on={theme === "dark"} onClick={() => setTheme(theme === "dark" ? "light" : "dark")} />} />
-            <ProfileRow icon={Bell} label={t.rideAnnouncements} right={<Toggle on={announceRequests} onClick={() => setAnnounceRequests((v) => !v)} />} />
-            <EasyModeRow />
-            <ProfileRow icon={Globe} label={t.language} right={
-              <div className="flex gap-1.5">
-                {["en", "hi", "bn"].map((l) => (
-                  <button key={l} onClick={() => setLang(l)} className="px-2.5 py-1 rounded-full text-[11px] font-bold rg-mono" style={{ background: lang === l ? "var(--accent)" : "var(--surface-2)", color: lang === l ? "#fff" : "var(--muted)" }}>{l.toUpperCase()}</button>
-                ))}
-              </div>} />
-            <SwitchRoleRow />
-            <button onClick={() => go("login")} className="w-full flex items-center gap-3 py-3.5 px-1 font-semibold" style={{ color: "var(--red)" }}><LogOut size={18} /> {t.logout}</button>
-          </div>
-        )}
-
-        <div className="flex gap-3">
-          <button onClick={() => setOnline((o) => !o)} className="flex-1 rounded-2xl py-3 font-semibold text-sm" style={{ background: "var(--surface-2)" }}>{online ? t.goOffline : t.goOnline}</button>
-          <button className="flex-1 rounded-2xl py-3 font-semibold text-sm" style={{ background: "var(--red)", color: "#fff" }}>{t.help}</button>
-        </div>
+        <button onClick={() => go("login")} className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl font-semibold mt-2" style={{ background: "var(--surface-2)", color: "var(--red)" }}>
+          <LogOut size={16} /> {t.logout || "Logout"}
+        </button>
       </div>
     </div>
   );
 }
+
+function DWalletScreen() {
+  const { trips } = useApp();
+  const t = useT();
+  const balance = trips.reduce((s, tr) => s + tr.fare, 0) + 1240;
+
+  return (
+    <div className="flex flex-col h-full rg-anim-in">
+      <div className="flex items-center justify-between px-5 pt-5 pb-3 shrink-0">
+        <h1 className="rg-display text-[17px] font-semibold">{t.wallet || "Wallet"}</h1>
+      </div>
+      <div className="flex-1 overflow-y-auto rg-scroll px-5 pb-4">
+        <div className="rounded-2xl p-5 mb-4" style={{ background: "var(--accent-grad)", boxShadow: "0 16px 34px -14px var(--accent)" }}>
+          <p className="text-xs" style={{ color: "rgba(255,255,255,0.85)" }}>{t.walletBalance || "Wallet Balance"}</p>
+          <p className="rg-display text-3xl font-bold text-white mt-1">₹{balance}</p>
+        </div>
+        <button className="w-full py-3 rounded-xl font-semibold flex items-center justify-center gap-2" style={{ background: "var(--surface-2)", color: "var(--text)" }}>
+          <Wallet size={16} style={{ color: "var(--accent)" }} /> {t.addMoney || "Add Money"}
+        </button>
+        <h3 className="rg-display font-semibold text-sm mt-5 mb-2">{t.rideHistory || "Recent Earnings"}</h3>
+        {trips.length === 0 ? (
+          <p className="text-sm text-center py-8" style={{ color: "var(--muted)" }}>No earnings yet.</p>
+        ) : (
+          trips.map((tr) => (
+            <div key={tr.id} className="flex items-center justify-between rounded-2xl p-3.5 mb-2" style={{ background: "var(--surface-2)" }}>
+              <div className="flex items-center gap-2">
+                <CarIcon size={16} style={{ color: "var(--accent)" }} />
+                <span className="text-sm font-semibold">{tr.passenger || "Trip"}</span>
+              </div>
+              <span className="rg-mono font-semibold text-sm" style={{ color: "var(--accent)" }}>+₹{tr.fare}</span>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
 
 function DBottomNav({ tab, setTab }) {
   const t = useT();
