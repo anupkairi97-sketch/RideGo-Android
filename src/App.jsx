@@ -810,7 +810,34 @@ function PVehicleScreen({ go, params }) {
           <span className="text-sm" style={{ color: "var(--muted)" }}>{t.estFare}</span>
           <span className="rg-display text-xl font-bold">₹{fareFor(vehicle)}</span>
         </div>
-        <Btn onClick={() => go("searching", { ...params, vehicle, payment })}>{t.bookRide}</Btn>
+        <Btn
+  onClick={async () => {
+    try {
+      const rideId = await createRideRequest({
+        pickup: params.pickup,
+        drop: params.drop,
+        vehicle: vehicle.name,
+        fare: fareFor(vehicle),
+        payment,
+        status: "searching",
+        passenger: params.name || "Passenger",
+mobile: params.mobile || "",
+      });
+
+      go("searching", {
+        ...params,
+        vehicle,
+        payment,
+        rideId,
+      });
+    } catch (e) {
+      console.error(e);
+      alert("Failed to create ride request");
+    }
+  }}
+>
+  {t.bookRide}
+</Btn>
       </div>
     </div>
   );
