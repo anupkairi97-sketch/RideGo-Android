@@ -831,9 +831,9 @@ mobile: params.mobile || "",
         rideId,
       });
     } catch (e) {
-      console.error(e);
-      alert("Failed to create ride request");
-    }
+  console.error(e);
+  alert("Firebase Error:\n" + e.message);
+}
   }}
 >
   {t.bookRide}
