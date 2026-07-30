@@ -47,3 +47,12 @@ export async function acceptRide(rideId, driverInfo) {
 export async function markArrived(rideId) { await updateDoc(doc(db, "rideRequests", rideId), { status: "arrived" }); }
 export async function startTrip(rideId) { await updateDoc(doc(db, "rideRequests", rideId), { status: "ontrip" }); }
 export async function completeRide(rideId) { await updateDoc(doc(db, "rideRequests", rideId), { status: "completed" }); }
+export async function updateDriverLocation(rideId, lat, lng) {
+  await updateDoc(doc(db, "rideRequests", rideId), {
+    driverLocation: {
+      lat,
+      lng,
+      updatedAt: serverTimestamp(),
+    },
+  });
+}
