@@ -3,7 +3,16 @@ import { BarChart, Bar, XAxis, ResponsiveContainer, Tooltip, CartesianGrid } fro
 import { MapContainer, TileLayer, Marker, Polyline } from "react-leaflet";
 import L from "leaflet";
 import { TextToSpeech } from "@capacitor-community/text-to-speech";
-import { db, createRideRequest, watchRide, watchSearchingRequests, acceptRide, markArrived, startTrip, completeRide } from "./firebase";
+import {
+  createRideRequest,
+  watchRide,
+  watchSearchingRequests,
+  acceptRide,
+  markArrived,
+  startTrip,
+  completeRide,
+  updateDriverLocation
+} from "./firebase";
 import "leaflet/dist/leaflet.css";
 import "./firebase";
 import {
@@ -1474,7 +1483,23 @@ function DHomeScreen() {
     const unsub = watchSearchingRequests((r) => setRequest(r));
     return () => unsub && unsub();
   }, [online, activeTrip]);
-    
+   useEffect(() => {
+  if (!activeTrip?.id) return;
+
+  const id = setInterval(() => {
+    if (!navigator.geolocation) return;
+
+    navigator.geolocation.getCurrentPosition((pos) => {
+      updateDriverLocation(
+        activeTrip.id,
+        pos.coords.latitude,
+        pos.coords.longitude
+      ).catch(console.error);
+    });
+  }, 3000);
+
+  return () => clearInterval(id);
+}, [activeTrip]); 
     
    
   
