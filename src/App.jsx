@@ -226,6 +226,12 @@ const passengerMarkerIcon = L.divIcon({
   iconSize: [16, 16],
   iconAnchor: [8, 8],
 });
+const dropMarkerIcon = L.divIcon({
+  className: "",
+  html: '<div style="width:14px;height:14px;border-radius:50%;background:#E23D3D;border:3px solid #fff;"></div>',
+  iconSize: [14, 14],
+  iconAnchor: [7, 7],
+});
 const MOCK_REQUESTS = [
   { passenger: "Ritu Verma", mobile: "98765 43210", pickup: "Sector 12, Main Road", drop: "Railway Station", distanceKm: 4.5 },
   { passenger: "Aman Gupta", mobile: "91234 56780", pickup: "Lakhipur Chowk", drop: "Silchar Railway Station", distanceKm: 9.2 },
@@ -952,7 +958,7 @@ function TrackingMap({ height = 190 }) {
           <TileLayer attribution='&copy; OpenStreetMap contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
           <Polyline positions={route} pathOptions={{ color: "#16A34A", weight: 4 }} />
           <Marker position={pickupPt} icon={passengerMarkerIcon} />
-          <Marker position={dropPt} icon={L.divIcon({ className: "", html: '<div style="width:14px;height:14px;border-radius:50%;background:#E23D3D;border:3px solid #fff;"></div>', iconSize: [14, 14], iconAnchor: [7, 7] })} />
+          <Marker position={dropPt} icon={dropMarkerIcon} />
         </MapContainer>
       )}
     </div>
