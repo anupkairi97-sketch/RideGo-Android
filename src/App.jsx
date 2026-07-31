@@ -975,19 +975,22 @@ function PTrackingScreen({ go, params }) {
 
     if (params.rideId) {
       const unsub = watchRide(params.rideId, (data) => {
-        if (!data) return;
-        if (data.status === "arrived" && !spokenArrived.current) {
-          spokenArrived.current = true;
-          setArrived(true);
-          speakGuide(t.driverArrivedVoice);
-        }
-        if (data.status === "ontrip" && !spokenOnTrip.current) {
-          spokenOnTrip.current = true;
-          speakGuide(t.tripStartedVoice);
-          go("ontrip", { ...params, fare });
-        }
+        try {
+          if (!data) return;
+          if (data.status === "arrived" && !spokenArrived.current) {
+            spokenArrived.current = true;
+            setArrived(true);
+            speakGuide(t.driverArrivedVoice);
+          }
+          if (data.status === "ontrip" && !spokenOnTrip.current) {
+            spokenOnTrip.current = true;
+            speakGuide(t.tripStartedVoice);
+            go("ontrip", { ...params, fare });
+          }
+        } catch (err) { console.error("watchRide callback error:", err); }
       });
       return () => unsub();
+    }
     }
 
     const id1 = setTimeout(() => { setArrived(true); speakGuide(t.driverArrivedVoice); }, 6000);
@@ -1022,11 +1025,11 @@ function PTrackingScreen({ go, params }) {
 
         <div className="flex items-center gap-3 rounded-2xl p-4 mb-3 rg-card">
           <div className="w-12 h-12 rounded-full overflow-hidden flex items-center justify-center rg-display font-bold text-lg shrink-0" style={{ background: "var(--accent-grad)", color: "#fff" }}>
-            {driver.photo ? <img src={driver.photo} className="w-full h-full object-cover" alt="" /> : driver.name[0]}
+            {driver?.photo ? <img src={driver.photo} className="w-full h-full object-cover" alt="" /> : (driver?.name?.[0] || "D")}
           </div>
           <div className="flex-1">
-            <p className="font-semibold text-[15px]">{driver.name}</p>
-            <p className="text-xs flex items-center gap-1" style={{ color: "var(--muted)" }}><Star size={11} fill="var(--amber)" color="var(--amber)" /> {driver.rating} · {driver.plate}</p>
+            <p className="font-semibold text-[15px]">{driver?.name || "Driver"}</p>
+            <p className="text-xs flex items-center gap-1" style={{ color: "var(--muted)" }}><Star size={11} fill="var(--amber)" color="var(--amber)" /> {driver?.rating || "—"} · {driver?.plate || ""}</p>
           </div>
           <div className="flex gap-2">
             <a href={`tel:${(driver.mobile || "").replace(/\s/g, "")}`} className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: "var(--accent-grad)" }}><Phone size={15} color="#fff" /></a>
