@@ -1142,7 +1142,7 @@ function PInTripScreen({ go, params }) {
             <MoreHorizontal size={17} style={{ color: "var(--accent)" }} /><span className="text-[10px] font-medium">{t.more}</span>
           </button>
         </div>
-
+<div className="flex">
         <div className="rounded-2xl p-4 mb-3" style={{ background: "var(--surface-2)" }}>
           <div className="flex items-center justify-between">
             <span className="text-xs" style={{ color: "var(--muted)" }}>{t.totalFare}</span>
@@ -1154,13 +1154,13 @@ function PInTripScreen({ go, params }) {
           </div>
         </div>
 
-        <div className="flex items-center gap-3 rounded-2xl p-4 mb-3 rg-card">
+          <div className="flex items-center gap-3 rounded-2xl p-4 mb-3 rg-card">
           <div className="w-11 h-11 rounded-full overflow-hidden flex items-center justify-center rg-display font-bold shrink-0" style={{ background: "var(--accent-grad)", color: "#fff" }}>
-            {params.driver.photo ? <img src={params.driver.photo} className="w-full h-full object-cover" alt="" /> : params.driver.name[0]}
+            {params.driver?.photo ? <img src={params.driver.photo} className="w-full h-full object-cover" alt="" /> : (params.driver?.name?.[0] || "D")}
           </div>
           <div className="flex-1">
-            <p className="font-semibold text-sm">{params.driver.name}</p>
-            <p className="text-xs flex items-center gap-1" style={{ color: "var(--muted)" }}><Star size={11} fill="var(--amber)" color="var(--amber)" /> {params.driver.rating} · {params.driver.plate}</p>
+            <p className="font-semibold text-sm">{params.driver?.name || "Driver"}</p>
+            <p className="text-xs flex items-center gap-1" style={{ color: "var(--muted)" }}><Star size={11} fill="var(--amber)" color="var(--amber)" /> {params.driver?.rating || "—"} · {params.driver?.plate || ""}</p>
           </div>
         </div>
 
