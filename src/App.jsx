@@ -854,39 +854,40 @@ mobile: params.mobile || "",
 
 function PSearchingScreen({ go, params }) {
   const t = useT();
-  const speakGuide = useVoiceGuide();
   useEffect(() => {
     speakGuide(t.rideBookedVoice);
 
     if (params.rideId) {
       const unsub = watchRide(params.rideId, (data) => {
-        if (data && data.status === "accepted") {
-          go("tracking", {
-            ...params,
-            driver: {
-              name: data.driverName,
-              plate: data.driverPlate,
-              rating: data.driverRating,
-              mobile: data.driverMobile,
-              photo: data.driverPhoto,
-              otp: 1000 + Math.floor(Math.random() * 8999),
-            },
-          });
-        }
+        try {
+          if (data && data.status === "accepted") {
+            go("tracking", {
+              ...params,
+              driver: {
+                name: data.driverName || "Driver", plate: data.driverPlate || "",
+                rating: data.driverRating || 4.5, mobile: data.driverMobile || "",
+                photo: data.driverPhoto || null,
+                otp: 1000 + Math.floor(Math.random() * 8999),
+              },
+            });
+          }
+        } catch (err) { console.error("watchRide callback error:", err); }
       });
       return () => unsub();
     }
 
     const id = setTimeout(() => {
-      const driver = {
-        name: DRIVER_NAMES[Math.floor(Math.random() * DRIVER_NAMES.length)],
-        rating: (4.5 + Math.random() * 0.5).toFixed(1),
-        plate: `WB ${10 + Math.floor(Math.random() * 80)} ${["AB", "CD", "PQ"][Math.floor(Math.random() * 3)]} ${1000 + Math.floor(Math.random() * 8999)}`,
-        otp: 1000 + Math.floor(Math.random() * 8999),
-      };
-      go("tracking", { ...params, driver });
+      try {
+        const driver = {
+          name: DRIVER_NAMES[Math.floor(Math.random() * DRIVER_NAMES.length)],
+          rating: (4.5 + Math.random() * 0.5).toFixed(1),
+          plate: `WB ${10 + Math.floor(Math.random() * 80)} ${["AB", "CD", "PQ"][Math.floor(Math.random() * 3)]} ${1000 + Math.floor(Math.random() * 8999)}`,
+          mobile: "98765 43210",
+          otp: 1000 + Math.floor(Math.random() * 8999),
+        };
+        go("tracking", { ...params, driver });
+      } catch (err) { console.error("demo fallback timer error:", err); }
     }, 2400);
-
     return () => clearTimeout(id);
   }, []);
 
