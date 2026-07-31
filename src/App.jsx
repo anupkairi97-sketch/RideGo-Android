@@ -997,7 +997,7 @@ function PTrackingScreen({ go, params }) {
       });
       return () => unsub();
     }
-    }
+    
 
     const id1 = setTimeout(() => { setArrived(true); speakGuide(t.driverArrivedVoice); }, 6000);
     const id2 = setTimeout(() => { speakGuide(t.tripStartedVoice); go("ontrip", { ...params, fare }); }, 10000);
