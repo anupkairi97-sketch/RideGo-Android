@@ -26,16 +26,48 @@ export async function createRideRequest(data) {
 }
 
 export function watchRide(rideId, callback) {
-  return onSnapshot(doc(db, "rideRequests", rideId), (snap) => callback(snap.exists() ? snap.data() : null));
+  return onSnapshot(
+    doc(db, "rideRequests", rideId),
+    (snap) => {
+      try {
+        callback(snap.exists() ? snap.data() : null);
+      } catch (err) {
+        console.error("watchRide callback crashed:", err);
+      }
+    },
+    (err) => {
+      console.error("watchRide Firestore error:", err);
+    }
+  );
 }
 
 export function watchSearchingRequests(callback) {
-  const q = query(collection(db, "rideRequests"), where("status", "==", "searching"), limit(1));
-  return onSnapshot(q, (snap) => {
-    if (snap.empty) { callback(null); return; }
-    const d = snap.docs[0];
-    callback({ id: d.id, ...d.data() });
-  });
+  const q = query(
+    collection(db, "rideRequests"),
+    where("status", "==", "searching"),
+    limit(1)
+  );
+
+  return onSnapshot(
+    q,
+    (snap) => {
+      try {
+        if (snap.empty) {
+          callback(null);
+          return;
+        }
+
+        const d = snap.docs[0];
+        callback({ id: d.id, ...d.data() });
+      } catch (err) {
+        console.error("watchSearchingRequests callback crashed:", err);
+      }
+    },
+    (err) => {
+      console.error("watchSearchingRequests Firestore error:", err);
+    }
+  );
+}
 }
 
 export async function acceptRide(rideId, driverInfo) {
