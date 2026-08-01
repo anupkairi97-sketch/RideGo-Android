@@ -1148,8 +1148,8 @@ function PInTripScreen({ go, params }) {
             <MoreHorizontal size={17} style={{ color: "var(--accent)" }} /><span className="text-[10px] font-medium">{t.more}</span>
           </button>
         </div>
-<div className="flex">
-        <div className="rounded-2xl p-4 mb-3" style={{ background: "var(--surface-2)" }}>
+<div className="grid gap-3 mb-3">
+        <div className="rounded-2xl p-4" style={{ background: "var(--surface-2)" }}>
           <div className="flex items-center justify-between">
             <span className="text-xs" style={{ color: "var(--muted)" }}>{t.totalFare}</span>
             <button className="text-xs font-semibold" style={{ color: "var(--accent)" }}>{t.change}</button>
