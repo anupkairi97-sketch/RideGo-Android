@@ -1185,7 +1185,7 @@ function PInTripScreen({ go, params }) {
       </div>
     </div>
   );
-}
+      }
 
 function PWalletScreen() {
   const t = useT();
