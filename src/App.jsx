@@ -1180,13 +1180,13 @@ function PInTripScreen({ go, params }) {
         </div>
       </div>
 
-      <div className="px-5 pb-8 pt-2 shrink-0">
+        <div className="px-5 pb-8 pt-2 shrink-0">
         <Btn onClick={finish}>{t.submitRating}</Btn>
       </div>
     </div>
   );
 }
-
+      
 function PWalletScreen() {
   const t = useT();
   const { rides } = useApp();
