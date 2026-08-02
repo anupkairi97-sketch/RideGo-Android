@@ -860,9 +860,9 @@ mobile: params.mobile || "",
 
 function PSearchingScreen({ go, params }) {
   const t = useT();
+  const speakGuide = useVoiceGuide();
   useEffect(() => {
     speakGuide(t.rideBookedVoice);
-
     if (params.rideId) {
       const unsub = watchRide(params.rideId, (data) => {
         try {
@@ -897,7 +897,16 @@ function PSearchingScreen({ go, params }) {
     return () => clearTimeout(id);
   }, []);
 
-  return null;
+  return (
+    <div className="flex flex-col h-full items-center justify-center px-8 text-center rg-anim-in">
+      <div className="relative w-24 h-24 mb-6 flex items-center justify-center">
+        <div className="absolute inset-0 rounded-full rg-glow" style={{ background: "var(--accent-tint)" }} />
+        {params.vehicle?.Icon ? <params.vehicle.Icon size={34} style={{ color: "var(--accent)" }} /> : <Car size={34} style={{ color: "var(--accent)" }} />}
+      </div>
+      <h2 className="rg-display text-xl font-bold mb-1">{t.searching}</h2>
+      <p className="text-sm" style={{ color: "var(--muted)" }}>{params.pickup}</p>
+    </div>
+  );
 }
 
 function SOSSheet({ onClose }) {
