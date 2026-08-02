@@ -68,7 +68,7 @@ export function watchSearchingRequests(callback) {
     }
   );
 }
-}
+
 
 export async function acceptRide(rideId, driverInfo) {
   await updateDoc(doc(db, "rideRequests", rideId), {
