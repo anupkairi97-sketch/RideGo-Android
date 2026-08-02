@@ -21,7 +21,7 @@ import {
   AlertTriangle, ChevronRight, ChevronLeft, X, Check, User, History,
   Home as HomeIcon, LogOut, MessageCircle, Navigation2, CreditCard, Edit3,
   ShieldAlert, PhoneCall, Loader2, Camera, Image as ImageIcon, Power, TrendingUp, Award,
-  Package, MapPinned, Flag, ArrowLeftRight, Car as CarIcon, Accessibility, Sparkles, Download,
+  Package, MapPinned, Flag, ArrowLeft, ArrowLeftRight, Car as CarIcon, Accessibility, Sparkles, Download,
   Menu, Gift, Share2, MoreHorizontal, Headphones, CheckCircle2, Mail, Briefcase,
 } from "lucide-react";
 
@@ -826,33 +826,27 @@ function PVehicleScreen({ go, params }) {
           <span className="rg-display text-xl font-bold">₹{fareFor(vehicle)}</span>
         </div>
         <Btn
-  onClick={async () => {
-    try {
-      const rideId = await createRideRequest({
-        pickup: params.pickup,
-        drop: params.drop,
-        vehicle: vehicle.name,
-        fare: fareFor(vehicle),
-        payment,
-        status: "searching",
-        passenger: params.name || "Passenger",
-mobile: params.mobile || "",
-      });
-
-      go("searching", {
-        ...params,
-        vehicle,
-        payment,
-        rideId,
-      });
-    } catch (e) {
-  console.error(e);
-  alert("Firebase Error:\n" + e.message);
-}
-  }}
->
-  {t.bookRide}
-</Btn>
+          onClick={async () => {
+            try {
+              const rideId = await createRideRequest({
+                pickup: params.pickup,
+                drop: params.drop,
+                vehicle: vehicle.name,
+                fare: fareFor(vehicle),
+                payment,
+                status: "searching",
+                passenger: params.name || "Passenger",
+                mobile: params.mobile || "",
+              });
+              go("searching", { ...params, vehicle, payment, rideId });
+            } catch (e) {
+              console.error(e);
+              alert("Firebase Error:\n" + e.message);
+            }
+          }}
+        >
+          {t.bookRide}
+        </Btn>
       </div>
     </div>
   );
@@ -1006,7 +1000,6 @@ function PTrackingScreen({ go, params }) {
       });
       return () => unsub();
     }
-    
 
     const id1 = setTimeout(() => { setArrived(true); speakGuide(t.driverArrivedVoice); }, 6000);
     const id2 = setTimeout(() => { speakGuide(t.tripStartedVoice); go("ontrip", { ...params, fare }); }, 10000);
@@ -1157,45 +1150,47 @@ function PInTripScreen({ go, params }) {
             <MoreHorizontal size={17} style={{ color: "var(--accent)" }} /><span className="text-[10px] font-medium">{t.more}</span>
           </button>
         </div>
-<div className="grid gap-3 mb-3">
-        <div className="rounded-2xl p-4" style={{ background: "var(--surface-2)" }}>
-          <div className="flex items-center justify-between">
-            <span className="text-xs" style={{ color: "var(--muted)" }}>{t.totalFare}</span>
-            <button className="text-xs font-semibold" style={{ color: "var(--accent)" }}>{t.change}</button>
+
+        <div className="grid gap-3 mb-3">
+          <div className="rounded-2xl p-4" style={{ background: "var(--surface-2)" }}>
+            <div className="flex items-center justify-between">
+              <span className="text-xs" style={{ color: "var(--muted)" }}>{t.totalFare}</span>
+              <button className="text-xs font-semibold" style={{ color: "var(--accent)" }}>{t.change}</button>
+            </div>
+            <div className="flex items-center justify-between mt-0.5">
+              <span className="rg-display text-2xl font-bold">₹{fare}</span>
+              <span className="text-xs font-semibold capitalize" style={{ color: "var(--muted)" }}>{payment}</span>
+            </div>
           </div>
-          <div className="flex items-center justify-between mt-0.5">
-            <span className="rg-display text-2xl font-bold">₹{fare}</span>
-            <span className="text-xs font-semibold capitalize" style={{ color: "var(--muted)" }}>{payment}</span>
-          </div>
-        </div>
 
           <div className="flex items-center gap-3 rounded-2xl p-4 mb-3 rg-card">
-          <div className="w-11 h-11 rounded-full overflow-hidden flex items-center justify-center rg-display font-bold shrink-0" style={{ background: "var(--accent-grad)", color: "#fff" }}>
-            {params.driver?.photo ? <img src={params.driver.photo} className="w-full h-full object-cover" alt="" /> : (params.driver?.name?.[0] || "D")}
+            <div className="w-11 h-11 rounded-full overflow-hidden flex items-center justify-center rg-display font-bold shrink-0" style={{ background: "var(--accent-grad)", color: "#fff" }}>
+              {params.driver?.photo ? <img src={params.driver.photo} className="w-full h-full object-cover" alt="" /> : (params.driver?.name?.[0] || "D")}
+            </div>
+            <div className="flex-1">
+              <p className="font-semibold text-sm">{params.driver?.name || "Driver"}</p>
+              <p className="text-xs flex items-center gap-1" style={{ color: "var(--muted)" }}><Star size={11} fill="var(--amber)" color="var(--amber)" /> {params.driver?.rating || "—"} · {params.driver?.plate || ""}</p>
+            </div>
           </div>
-          <div className="flex-1">
-            <p className="font-semibold text-sm">{params.driver?.name || "Driver"}</p>
-            <p className="text-xs flex items-center gap-1" style={{ color: "var(--muted)" }}><Star size={11} fill="var(--amber)" color="var(--amber)" /> {params.driver?.rating || "—"} · {params.driver?.plate || ""}</p>
-          </div>
-        </div>
 
-        <p className="text-sm font-semibold mb-2 text-center">{t.rateYourRide}</p>
-        <div className="flex gap-2 justify-center mb-4">
-          {[1, 2, 3, 4, 5].map((n) => (
-            <button key={n} onClick={() => setStars(n)}>
-              <Star size={28} fill={n <= stars ? "var(--amber)" : "none"} color={n <= stars ? "var(--amber)" : "var(--border)"} />
-            </button>
-          ))}
+          <p className="text-sm font-semibold mb-2 text-center">{t.ratingPrompt}</p>
+          <div className="flex gap-2 justify-center mb-4">
+            {[1, 2, 3, 4, 5].map((n) => (
+              <button key={n} onClick={() => setStars(n)}>
+                <Star size={28} fill={n <= stars ? "var(--amber)" : "none"} color={n <= stars ? "var(--amber)" : "var(--border)"} />
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
-        <div className="px-5 pb-8 pt-2 shrink-0">
+      <div className="px-5 pb-8 pt-2 shrink-0">
         <Btn onClick={finish}>{t.submitRating}</Btn>
       </div>
     </div>
   );
 }
-      
+
 function PWalletScreen() {
   const t = useT();
   const { rides } = useApp();
@@ -1222,7 +1217,6 @@ function PWalletScreen() {
     </div>
   );
 }
-
 
 function PActivityScreen() {
   const t = useT();
@@ -1503,37 +1497,28 @@ function DHomeScreen() {
     const unsub = watchSearchingRequests((r) => setRequest(r));
     return () => unsub && unsub();
   }, [online, activeTrip]);
-   useEffect(() => {
-  if (!activeTrip?.id) return;
 
-  const id = setInterval(() => {
-    if (!navigator.geolocation) return;
-
-    navigator.geolocation.getCurrentPosition((pos) => {
-      updateDriverLocation(
-        activeTrip.id,
-        pos.coords.latitude,
-        pos.coords.longitude
-      ).catch(console.error);
-    });
-  }, 3000);
-
-  return () => clearInterval(id);
-}, [activeTrip]); 
-    
-   
-  
+  useEffect(() => {
+    if (!activeTrip?.id) return;
+    const id = setInterval(() => {
+      if (!navigator.geolocation) return;
+      navigator.geolocation.getCurrentPosition((pos) => {
+        updateDriverLocation(activeTrip.id, pos.coords.latitude, pos.coords.longitude).catch(console.error);
+      });
+    }, 3000);
+    return () => clearInterval(id);
+  }, [activeTrip]);
 
   useEffect(() => {
     if (!request) return;
-const fare = request.fare || Math.round(15 + request.distanceKm * 12);
+    const fare = request.fare || Math.round(15 + request.distanceKm * 12);
     const etaMin = Math.round(request.distanceKm * 3);
     const vName = driver?.vehicleType?.name || "";
     const line = `${t.voiceNewRequest} ${t.voicePickup}: ${request.pickup}. ${t.voiceDestination}: ${request.drop}. ${t.voiceDistance}: ${request.distanceKm} km. ${t.voiceEta}: ${etaMin} ${t.minutes}. ${t.voiceFare}: ₹${fare}. ${t.voiceVehicle}: ${vName}.`;
     announce(line);
   }, [request]);
 
-   const accept = async (fare) => {
+  const accept = async (fare) => {
     if (request.id) {
       try {
         await acceptRide(request.id, {
@@ -1566,16 +1551,11 @@ const fare = request.fare || Math.round(15 + request.distanceKm * 12);
     return (
       <div className="flex flex-col h-full rg-anim-in">
         <TopBar title={title} />
-    
-      
-       
         <div className="px-6"><RouteVisual /></div>
         <div className="px-6 pt-4 flex-1 overflow-y-auto rg-scroll">
           <div className="rounded-2xl p-4 mb-3 rg-card">
             <p className="text-xs mb-1" style={{ color: "var(--muted)" }}>Passenger</p>
-            <p className="font-semibold text-[15px] mb-2">
-  {activeTrip.passenger || activeTrip.passengerName}
-</p>
+            <p className="font-semibold text-[15px] mb-2">{activeTrip.passenger || activeTrip.passengerName}</p>
             <div className="flex items-center gap-2 text-sm mb-2"><MapPinned size={14} style={{ color: "var(--accent)" }} /> {activeTrip.pickup}</div>
             <div className="flex items-center gap-2 text-sm"><Flag size={14} style={{ color: "var(--red)" }} /> {activeTrip.drop}</div>
           </div>
@@ -1584,13 +1564,13 @@ const fare = request.fare || Math.round(15 + request.distanceKm * 12);
             <div className="rounded-2xl p-3.5" style={{ background: "var(--surface-2)" }}><p className="text-[11px]" style={{ color: "var(--muted)" }}>Distance</p><p className="rg-mono font-semibold text-lg">{activeTrip.distanceKm} km</p></div>
           </div>
           <a href={`tel:${(activeTrip.mobile || activeTrip.passengerMobile || "").replace(/\s/g, "")}`} className="flex items-center gap-2 mt-3 text-sm font-semibold" style={{ color: "var(--accent)" }}><PhoneCall size={15} /> Call {activeTrip.mobile || activeTrip.passengerMobile}</a>
-          <div className="px-6 pb-8 shrink-0">
-  <Btn onClick={advance}>{label}</Btn>
-</div>
-</div>
-</div>
-);
-}
+        </div>
+        <div className="px-6 pb-8 shrink-0">
+          <Btn onClick={advance}>{label}</Btn>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-full rg-anim-in relative">
@@ -1667,7 +1647,7 @@ function DEarningsScreen() {
   const [range, setRange] = useState("week");
   const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
   const chartData = days.map((d) => ({ day: d, earnings: Math.round(200 + Math.random() * 600) }));
-  const totalEarnings = trips.reduce((s, t) => s + t.fare, 0);
+  const totalEarnings = trips.reduce((s, tr) => s + tr.fare, 0);
   const rangeLabel = { today: "Today", week: "This week", month: "This month" };
   return (
     <div className="flex flex-col h-full rg-anim-in">
@@ -1807,9 +1787,6 @@ function DProfileScreen({ go }) {
   );
 }
 
-
-
-
 function DBottomNav({ tab, setTab }) {
   const t = useT();
   const items = [
@@ -1898,3 +1875,7 @@ export default function RideGo() {
     </AppCtx.Provider>
   );
 }
+
+
+
+
