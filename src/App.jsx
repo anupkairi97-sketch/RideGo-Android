@@ -1214,6 +1214,7 @@ function PWalletScreen() {
   );
 }
 
+
 function PActivityScreen() {
   const t = useT();
   const { rides } = useApp();
