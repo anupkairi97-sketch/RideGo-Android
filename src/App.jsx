@@ -11,8 +11,11 @@ import {
   markArrived,
   startTrip,
   completeRide,
-  updateDriverLocation
+  updateDriverLocation,
+  sendPhoneOtp,
+  verifyPhoneOtp
 } from "./firebase";
+  
 import "leaflet/dist/leaflet.css";
 import "./firebase";
 import {
@@ -594,8 +597,22 @@ function PLoginScreen({ go }) {
   const t = useT();
   const { lang, setLang, setRole } = useApp();
   const [mobile, setMobile] = useState("");
+  const [sending, setSending] = useState(false);
   const speakGuide = useVoiceGuide();
   useEffect(() => { speakGuide(t.mobileLabel); }, []);
+
+  const handleSendOtp = async () => {
+    setSending(true);
+    try {
+      const confirmationResult = await sendPhoneOtp(mobile, "recaptcha-passenger");
+      go("otp", { mobile, confirmationResult });
+    } catch (e) {
+      alert("Could not send OTP: " + e.message);
+    } finally {
+      setSending(false);
+    }
+  };
+
   return (
     <div className="flex flex-col h-full px-6 rg-anim-in">
       <TopBar onBack={() => setRole(null)} />
@@ -617,7 +634,8 @@ function PLoginScreen({ go }) {
         </div>
         <label className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--muted)" }}>{t.mobileLabel}</label>
         <Field icon={Phone} type="tel" placeholder="98765 43210" value={mobile} onChange={(e) => setMobile(e.target.value.replace(/\D/g, "").slice(0, 10))} />
-        <Btn disabled={mobile.length !== 10} onClick={() => go("otp", { mobile })}>{t.sendOtp} <ChevronRight size={17} /></Btn>
+        <div id="recaptcha-passenger"></div>
+        <Btn disabled={mobile.length !== 10 || sending} onClick={handleSendOtp}>{sending ? <Loader2 size={17} className="animate-spin" /> : <>{t.sendOtp} <ChevronRight size={17} /></>}</Btn>
         <p className="text-center text-xs pt-1" style={{ color: "var(--muted)" }}>Free to use · Sab kuchh free hai 🎉</p>
       </div>
     </div>
@@ -626,16 +644,32 @@ function PLoginScreen({ go }) {
 
 function POtpScreen({ go, params }) {
   const t = useT();
-  const [otp, setOtp] = useState(["", "", "", ""]);
-  const refs = [useRef(), useRef(), useRef(), useRef()];
+  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
+  const refs = [useRef(), useRef(), useRef(), useRef(), useRef(), useRef()];
+  const [verifying, setVerifying] = useState(false);
+  const [error, setError] = useState("");
   const speakGuide = useVoiceGuide();
   useEffect(() => { speakGuide(t.otpVoice); }, []);
   const update = (i, val) => {
     if (!/^\d?$/.test(val)) return;
     const next = [...otp]; next[i] = val; setOtp(next);
-    if (val && i < 3) refs[i + 1].current?.focus();
+    if (val && i < 5) refs[i + 1].current?.focus();
   };
   const complete = otp.every((d) => d !== "");
+
+  const handleVerify = async () => {
+    setVerifying(true);
+    setError("");
+    try {
+      await verifyPhoneOtp(params.confirmationResult, otp.join(""));
+      go("register", params);
+    } catch (e) {
+      setError(t.otpWrong || "Wrong code, try again.");
+    } finally {
+      setVerifying(false);
+    }
+  };
+
   return (
     <div className="flex flex-col h-full px-6 rg-anim-in">
       <TopBar onBack={() => go("login")} />
@@ -643,20 +677,19 @@ function POtpScreen({ go, params }) {
         <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ background: "var(--accent-tint)" }}><ShieldCheck size={26} style={{ color: "var(--accent)" }} /></div>
         <h2 className="rg-display text-2xl font-bold">{t.otpTitle}</h2>
         <p style={{ color: "var(--muted)" }} className="text-sm -mt-2">{t.otpSubtitle} +91 {params.mobile}</p>
-        <div className="flex gap-3 mt-2">
+        <div className="flex gap-2 mt-2">
           {otp.map((d, i) => (
             <input key={i} ref={refs[i]} value={d} maxLength={1} inputMode="numeric" onChange={(e) => update(i, e.target.value)}
-              className="w-14 h-14 text-center text-xl rg-mono font-semibold rounded-2xl" style={{ background: "var(--surface-2)", border: "1.5px solid var(--border)", color: "var(--ink)" }} />
+              className="w-11 h-14 text-center text-xl rg-mono font-semibold rounded-2xl" style={{ background: "var(--surface-2)", border: "1.5px solid var(--border)", color: "var(--ink)" }} />
           ))}
         </div>
-        <p className="text-xs rg-mono" style={{ color: "var(--amber)" }}>Demo OTP: 1234</p>
+        {error && <p className="text-xs" style={{ color: "var(--red)" }}>{error}</p>}
         <button className="text-sm font-semibold text-left" style={{ color: "var(--accent)" }}>{t.resend}</button>
       </div>
-      <div className="pb-8"><Btn disabled={!complete} onClick={() => go("register", params)}>{t.verify}</Btn></div>
+      <div className="pb-8"><Btn disabled={!complete || verifying} onClick={handleVerify}>{verifying ? <Loader2 size={17} className="animate-spin" /> : t.verify}</Btn></div>
     </div>
   );
 }
-
 function PRegisterScreen({ go, params }) {
   const t = useT();
   const { setUser } = useApp();
@@ -1353,10 +1386,24 @@ function PassengerShell() {
 
 function DLoginScreen({ go }) {
   const [mobile, setMobile] = useState("");
+  const [sending, setSending] = useState(false);
   const { setRole, lang, setLang } = useApp();
   const t = useT();
   const speakGuide = useVoiceGuide();
   useEffect(() => { speakGuide(t.driverLoginVoice); }, []);
+
+  const handleSendOtp = async () => {
+    setSending(true);
+    try {
+      const confirmationResult = await sendPhoneOtp(mobile, "recaptcha-driver");
+      go("otp", { mobile, confirmationResult });
+    } catch (e) {
+      alert("Could not send OTP: " + e.message);
+    } finally {
+      setSending(false);
+    }
+  };
+
   return (
     <div className="flex flex-col h-full px-6 rg-anim-in">
       <TopBar onBack={() => setRole(null)} />
@@ -1374,24 +1421,41 @@ function DLoginScreen({ go }) {
         </div>
         <label className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--muted)" }}>Mobile number</label>
         <Field icon={Phone} type="tel" placeholder="98765 43210" value={mobile} onChange={(e) => setMobile(e.target.value.replace(/\D/g, "").slice(0, 10))} />
-        <Btn disabled={mobile.length !== 10} onClick={() => go("otp", { mobile })}>Send OTP <ChevronRight size={17} /></Btn>
+        <div id="recaptcha-driver"></div>
+        <Btn disabled={mobile.length !== 10 || sending} onClick={handleSendOtp}>{sending ? <Loader2 size={17} className="animate-spin" /> : <>Send OTP <ChevronRight size={17} /></>}</Btn>
       </div>
     </div>
   );
 }
 
 function DOtpScreen({ go, params }) {
-  const [otp, setOtp] = useState(["", "", "", ""]);
-  const refs = [useRef(), useRef(), useRef(), useRef()];
+  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
+  const refs = [useRef(), useRef(), useRef(), useRef(), useRef(), useRef()];
+  const [verifying, setVerifying] = useState(false);
+  const [error, setError] = useState("");
   const t = useT();
   const speakGuide = useVoiceGuide();
   useEffect(() => { speakGuide(t.driverOtpVoice); }, []);
   const update = (i, val) => {
     if (!/^\d?$/.test(val)) return;
     const next = [...otp]; next[i] = val; setOtp(next);
-    if (val && i < 3) refs[i + 1].current?.focus();
+    if (val && i < 5) refs[i + 1].current?.focus();
   };
   const complete = otp.every((d) => d !== "");
+
+  const handleVerify = async () => {
+    setVerifying(true);
+    setError("");
+    try {
+      await verifyPhoneOtp(params.confirmationResult, otp.join(""));
+      go("register", params);
+    } catch (e) {
+      setError(t.otpWrong || "Wrong code, try again.");
+    } finally {
+      setVerifying(false);
+    }
+  };
+
   return (
     <div className="flex flex-col h-full px-6 rg-anim-in">
       <TopBar onBack={() => go("login")} />
@@ -1399,15 +1463,15 @@ function DOtpScreen({ go, params }) {
         <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ background: "var(--accent-tint)" }}><ShieldCheck size={26} style={{ color: "var(--accent)" }} /></div>
         <h2 className="rg-display text-2xl font-bold">Verify your number</h2>
         <p style={{ color: "var(--muted)" }} className="text-sm -mt-2">code sent to +91 {params.mobile}</p>
-        <div className="flex gap-3 mt-2">
+        <div className="flex gap-2 mt-2">
           {otp.map((d, i) => (
             <input key={i} ref={refs[i]} value={d} maxLength={1} inputMode="numeric" onChange={(e) => update(i, e.target.value)}
-              className="w-14 h-14 text-center text-xl rg-mono font-semibold rounded-2xl" style={{ background: "var(--surface-2)", border: "1.5px solid var(--border)", color: "var(--ink)" }} />
+              className="w-11 h-14 text-center text-xl rg-mono font-semibold rounded-2xl" style={{ background: "var(--surface-2)", border: "1.5px solid var(--border)", color: "var(--ink)" }} />
           ))}
         </div>
-        <p className="text-xs rg-mono" style={{ color: "var(--amber)" }}>Demo OTP: 1234</p>
+        {error && <p className="text-xs" style={{ color: "var(--red)" }}>{error}</p>}
       </div>
-      <div className="pb-8"><Btn disabled={!complete} onClick={() => go("register", params)}>Verify & continue</Btn></div>
+      <div className="pb-8"><Btn disabled={!complete || verifying} onClick={handleVerify}>{verifying ? <Loader2 size={17} className="animate-spin" /> : "Verify & continue"}</Btn></div>
     </div>
   );
 }
