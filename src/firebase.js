@@ -1,4 +1,5 @@
 import { initializeApp } from "firebase/app";
+import { getAuth, RecaptchaVerifier, signInWithPhoneNumber } from "firebase/auth";
 import {
   getFirestore, collection, addDoc, doc, onSnapshot, updateDoc,
   query, where, limit, serverTimestamp,
@@ -15,6 +16,29 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
+export const auth = getAuth(app);
+
+let recaptchaVerifier = null;
+
+function getRecaptcha(containerId) {
+  if (!recaptchaVerifier) {
+    recaptchaVerifier = new RecaptchaVerifier(auth, containerId, {
+      size: "invisible",
+    });
+  }
+  return recaptchaVerifier;
+}
+
+export async function sendPhoneOtp(mobile10Digit, containerId) {
+  const verifier = getRecaptcha(containerId);
+  const fullNumber = "+91" + mobile10Digit;
+  return signInWithPhoneNumber(auth, fullNumber, verifier);
+}
+
+export async function verifyPhoneOtp(confirmationResult, code) {
+  const result = await confirmationResult.confirm(code);
+  return result.user;
+}
 
 export async function createRideRequest(data) {
   const docRef = await addDoc(collection(db, "rideRequests"), {
