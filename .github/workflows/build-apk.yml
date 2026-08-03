@@ -54,8 +54,10 @@ jobs:
 
       - name: Make gradlew executable
         run: chmod +x android/gradlew
-
-      - name: Build debug APK
+      - name: Show SHA fingerprints
+        working-directory: android
+        run: ./gradlew signingReport
+      - name: Build debug APKk
         working-directory: android
         run: ./gradlew assembleDebug
 
