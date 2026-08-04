@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getAuth, RecaptchaVerifier, signInWithPhoneNumber } from "firebase/auth";
+import { FirebaseAuthentication } from "@capacitor-firebase/authentication";
 import {
   getFirestore, collection, addDoc, doc, onSnapshot, updateDoc,
   query, where, limit, serverTimestamp,
@@ -16,27 +16,41 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
-export const auth = getAuth(app);
-
-let recaptchaVerifier = null;
-
-function getRecaptcha(containerId) {
-  if (!recaptchaVerifier) {
-    recaptchaVerifier = new RecaptchaVerifier(auth, containerId, {
-      size: "invisible",
-    });
-  }
-  return recaptchaVerifier;
-}
-
-export async function sendPhoneOtp(mobile10Digit, containerId) {
-  const verifier = getRecaptcha(containerId);
+export async function sendPhoneOtpNative(mobile10Digit) {
   const fullNumber = "+91" + mobile10Digit;
-  return signInWithPhoneNumber(auth, fullNumber, verifier);
+
+  return new Promise((resolve, reject) => {
+    let handled = false;
+
+    FirebaseAuthentication.addListener("phoneCodeSent", (event) => {
+      if (handled) return;
+      handled = true;
+      resolve(event.verificationId);
+    });
+
+    FirebaseAuthentication.addListener("phoneVerificationFailed", (event) => {
+      if (handled) return;
+      handled = true;
+      reject(new Error(event.message || "OTP send failed"));
+    });
+
+    FirebaseAuthentication.signInWithPhoneNumber({
+      phoneNumber: fullNumber,
+    }).catch((e) => {
+      if (!handled) {
+        handled = true;
+        reject(e);
+      }
+    });
+  });
 }
 
-export async function verifyPhoneOtp(confirmationResult, code) {
-  const result = await confirmationResult.confirm(code);
+export async function verifyPhoneOtpNative(verificationId, code) {
+  const result = await FirebaseAuthentication.confirmVerificationCode({
+    verificationId,
+    verificationCode: code,
+  });
+
   return result.user;
 }
 
