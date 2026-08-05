@@ -12,8 +12,8 @@ import {
   startTrip,
   completeRide,
   updateDriverLocation,
-  sendPhoneOtp,
-  verifyPhoneOtp
+  sendPhoneOtpNative,
+  verifyPhoneOtpNative
 } from "./firebase";
   
 import "leaflet/dist/leaflet.css";
@@ -604,8 +604,8 @@ function PLoginScreen({ go }) {
   const handleSendOtp = async () => {
     setSending(true);
     try {
-      const confirmationResult = await sendPhoneOtp(mobile, "recaptcha-passenger");
-      go("otp", { mobile, confirmationResult });
+      const verificationId = await sendPhoneOtpNative(mobile);
+      go("otp", { mobile, verificationId });
     } catch (e) {
       alert("Could not send OTP: " + e.message);
     } finally {
@@ -634,7 +634,7 @@ function PLoginScreen({ go }) {
         </div>
         <label className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--muted)" }}>{t.mobileLabel}</label>
         <Field icon={Phone} type="tel" placeholder="98765 43210" value={mobile} onChange={(e) => setMobile(e.target.value.replace(/\D/g, "").slice(0, 10))} />
-        <div id="recaptcha-passenger"></div>
+       
         <Btn disabled={mobile.length !== 10 || sending} onClick={handleSendOtp}>{sending ? <Loader2 size={17} className="animate-spin" /> : <>{t.sendOtp} <ChevronRight size={17} /></>}</Btn>
         <p className="text-center text-xs pt-1" style={{ color: "var(--muted)" }}>Free to use · Sab kuchh free hai 🎉</p>
       </div>
@@ -661,7 +661,7 @@ function POtpScreen({ go, params }) {
     setVerifying(true);
     setError("");
     try {
-      await verifyPhoneOtp(params.confirmationResult, otp.join(""));
+      await verifyPhoneOtpNative(params.verificationId, otp.join(""));
       go("register", params);
     } catch (e) {
       setError(t.otpWrong || "Wrong code, try again.");
@@ -1393,16 +1393,16 @@ function DLoginScreen({ go }) {
   useEffect(() => { speakGuide(t.driverLoginVoice); }, []);
 
   const handleSendOtp = async () => {
-    setSending(true);
-    try {
-      const confirmationResult = await sendPhoneOtp(mobile, "recaptcha-driver");
-      go("otp", { mobile, confirmationResult });
-    } catch (e) {
-      alert("Could not send OTP: " + e.message);
-    } finally {
-      setSending(false);
-    }
-  };
+  setSending(true);
+  try {
+    const verificationId = await sendPhoneOtpNative(mobile);
+    go("otp", { mobile, verificationId });
+  } catch (e) {
+    alert("Could not send OTP: " + e.message);
+  } finally {
+    setSending(false);
+  }
+};
 
   return (
     <div className="flex flex-col h-full px-6 rg-anim-in">
@@ -1421,7 +1421,7 @@ function DLoginScreen({ go }) {
         </div>
         <label className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--muted)" }}>Mobile number</label>
         <Field icon={Phone} type="tel" placeholder="98765 43210" value={mobile} onChange={(e) => setMobile(e.target.value.replace(/\D/g, "").slice(0, 10))} />
-        <div id="recaptcha-driver"></div>
+        
         <Btn disabled={mobile.length !== 10 || sending} onClick={handleSendOtp}>{sending ? <Loader2 size={17} className="animate-spin" /> : <>Send OTP <ChevronRight size={17} /></>}</Btn>
       </div>
     </div>
