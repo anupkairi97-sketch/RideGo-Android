@@ -18,6 +18,7 @@ import {
   
 import "leaflet/dist/leaflet.css";
 import "./firebase";
+import AdminApp from "./AdminPanel";
 import {
   Phone, ShieldCheck, MapPin, Search, Bike, CarTaxiFront, Zap, Car, Truck,
   Clock, Star, Wallet, Banknote, Bell, Sun, Moon, Globe, Volume2,
@@ -1877,6 +1878,9 @@ function DriverShell() {
 
 /* --------------------------------- Root --------------------------------- */
 export default function RideGo() {
+          if (window.location.search.includes("admin")) {
+  return <AdminApp />;
+          }
   const [theme, setTheme] = useState("light");
   const [lang, setLang] = useState("en");
   const [voiceGuide, setVoiceGuide] = useState(false);
