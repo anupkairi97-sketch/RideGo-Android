@@ -603,7 +603,7 @@ function PLoginScreen({ go }) {
       <TopBar onBack={() => setRole(null)} />
       <div className="flex-1 flex flex-col justify-center items-center text-center gap-3 -mt-10">
         <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-2" style={{ background: "var(--accent-grad)", boxShadow: "0 14px 30px -10px var(--accent)" }}>
-          <Navigation2 size={30} color="#fff" />
+          <Navreturnigation2 size={30} color="#fff" />
         </div>
         <h1 className="rg-display text-3xl font-bold">{t.appName}</h1>
         <p style={{ color: "var(--muted)" }} className="text-[15px]">{t.tagline}</p>
@@ -625,34 +625,8 @@ function PLoginScreen({ go }) {
     </div>
   );
 }
-  return (
-    <div className="flex flex-col h-full px-6 rg-anim-in">
-      <TopBar onBack={() => setRole(null)} />
-      <div className="flex-1 flex flex-col justify-center items-center text-center gap-3 -mt-10">
-        <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-2" style={{ background: "var(--accent-grad)", boxShadow: "0 14px 30px -10px var(--accent)" }}>
-          <Navigation2 size={30} color="#fff" />
-        </div>
-        <h1 className="rg-display text-3xl font-bold">{t.appName}</h1>
-        <p style={{ color: "var(--muted)" }} className="text-[15px]">{t.tagline}</p>
-      </div>
-      <div className="pb-8 flex flex-col gap-3">
-        <div className="flex gap-2 justify-center mb-1">
-          {["en", "hi", "bn"].map((l) => (
-            <button key={l} onClick={() => setLang(l)} className="px-3 py-1.5 rounded-full text-xs font-semibold rg-mono"
-              style={{ background: lang === l ? "var(--accent)" : "var(--surface-2)", color: lang === l ? "#fff" : "var(--muted)" }}>
-              {l.toUpperCase()}
-            </button>
-          ))}
-        </div>
-        <label className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--muted)" }}>{t.mobileLabel}</label>
-        <Field icon={Phone} type="tel" placeholder="98765 43210" value={mobile} onChange={(e) => setMobile(e.target.value.replace(/\D/g, "").slice(0, 10))} />
-       
-        <Btn disabled={mobile.length !== 10 || sending} onClick={handleSendOtp}>{sending ? <Loader2 size={17} className="animate-spin" /> : <>{t.sendOtp} <ChevronRight size={17} /></>}</Btn>
-        <p className="text-center text-xs pt-1" style={{ color: "var(--muted)" }}>Free to use · Sab kuchh free hai 🎉</p>
-      </div>
-    </div>
-  );
-}
+   (
+    
 
 function POtpScreen({ go, params }) {
   const t = useT();
