@@ -598,12 +598,13 @@ function PLoginScreen({ go }) {
   const [mobile, setMobile] = useState("");
   const speakGuide = useVoiceGuide();
   useEffect(() => { speakGuide(t.mobileLabel); }, []);
+
   return (
     <div className="flex flex-col h-full px-6 rg-anim-in">
       <TopBar onBack={() => setRole(null)} />
       <div className="flex-1 flex flex-col justify-center items-center text-center gap-3 -mt-10">
         <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-2" style={{ background: "var(--accent-grad)", boxShadow: "0 14px 30px -10px var(--accent)" }}>
-          <Navreturnigation2 size={30} color="#fff" />
+          <Navigation2 size={30} color="#fff" />
         </div>
         <h1 className="rg-display text-3xl font-bold">{t.appName}</h1>
         <p style={{ color: "var(--muted)" }} className="text-[15px]">{t.tagline}</p>
@@ -625,8 +626,6 @@ function PLoginScreen({ go }) {
     </div>
   );
 }
-   (
-    
 
 function POtpScreen({ go, params }) {
   const t = useT();
@@ -640,6 +639,7 @@ function POtpScreen({ go, params }) {
     if (val && i < 3) refs[i + 1].current?.focus();
   };
   const complete = otp.every((d) => d !== "");
+
   return (
     <div className="flex flex-col h-full px-6 rg-anim-in">
       <TopBar onBack={() => go("login")} />
@@ -657,27 +657,6 @@ function POtpScreen({ go, params }) {
         <button className="text-sm font-semibold text-left" style={{ color: "var(--accent)" }}>{t.resend}</button>
       </div>
       <div className="pb-8"><Btn disabled={!complete} onClick={() => go("register", params)}>{t.verify}</Btn></div>
-    </div>
-  );
-}
-
-  return (
-    <div className="flex flex-col h-full px-6 rg-anim-in">
-      <TopBar onBack={() => go("login")} />
-      <div className="flex-1 flex flex-col justify-center gap-4">
-        <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ background: "var(--accent-tint)" }}><ShieldCheck size={26} style={{ color: "var(--accent)" }} /></div>
-        <h2 className="rg-display text-2xl font-bold">{t.otpTitle}</h2>
-        <p style={{ color: "var(--muted)" }} className="text-sm -mt-2">{t.otpSubtitle} +91 {params.mobile}</p>
-        <div className="flex gap-2 mt-2">
-          {otp.map((d, i) => (
-            <input key={i} ref={refs[i]} value={d} maxLength={1} inputMode="numeric" onChange={(e) => update(i, e.target.value)}
-              className="w-11 h-14 text-center text-xl rg-mono font-semibold rounded-2xl" style={{ background: "var(--surface-2)", border: "1.5px solid var(--border)", color: "var(--ink)" }} />
-          ))}
-        </div>
-        {error && <p className="text-xs" style={{ color: "var(--red)" }}>{error}</p>}
-        <button className="text-sm font-semibold text-left" style={{ color: "var(--accent)" }}>{t.resend}</button>
-      </div>
-      <div className="pb-8"><Btn disabled={!complete || verifying} onClick={handleVerify}>{verifying ? <Loader2 size={17} className="animate-spin" /> : t.verify}</Btn></div>
     </div>
   );
 }
@@ -1381,6 +1360,7 @@ function DLoginScreen({ go }) {
   const t = useT();
   const speakGuide = useVoiceGuide();
   useEffect(() => { speakGuide(t.driverLoginVoice); }, []);
+
   return (
     <div className="flex flex-col h-full px-6 rg-anim-in">
       <TopBar onBack={() => setRole(null)} />
@@ -1404,30 +1384,6 @@ function DLoginScreen({ go }) {
   );
 }
 
-  return (
-    <div className="flex flex-col h-full px-6 rg-anim-in">
-      <TopBar onBack={() => setRole(null)} />
-      <div className="flex-1 flex flex-col justify-center items-center text-center gap-3 -mt-10">
-        <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-2" style={{ background: "var(--accent-grad)", boxShadow: "0 14px 30px -10px var(--accent)" }}><Navigation2 size={30} color="#fff" /></div>
-        <h1 className="rg-display text-3xl font-bold">RideGo Driver</h1>
-        <p style={{ color: "var(--muted)" }} className="text-[15px]">Earn on your own schedule.</p>
-      </div>
-      <div className="pb-8 flex flex-col gap-3">
-        <div className="flex gap-2 justify-center mb-1">
-          {["en", "hi", "bn"].map((l) => (
-            <button key={l} onClick={() => setLang(l)} className="px-3 py-1.5 rounded-full text-xs font-semibold rg-mono"
-              style={{ background: lang === l ? "var(--accent)" : "var(--surface-2)", color: lang === l ? "#fff" : "var(--muted)" }}>{l.toUpperCase()}</button>
-          ))}
-        </div>
-        <label className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--muted)" }}>Mobile number</label>
-        <Field icon={Phone} type="tel" placeholder="98765 43210" value={mobile} onChange={(e) => setMobile(e.target.value.replace(/\D/g, "").slice(0, 10))} />
-        
-        <Btn disabled={mobile.length !== 10 || sending} onClick={handleSendOtp}>{sending ? <Loader2 size={17} className="animate-spin" /> : <>Send OTP <ChevronRight size={17} /></>}</Btn>
-      </div>
-    </div>
-  );
-}
-
 function DOtpScreen({ go, params }) {
   const [otp, setOtp] = useState(["", "", "", ""]);
   const refs = [useRef(), useRef(), useRef(), useRef()];
@@ -1440,6 +1396,7 @@ function DOtpScreen({ go, params }) {
     if (val && i < 3) refs[i + 1].current?.focus();
   };
   const complete = otp.every((d) => d !== "");
+
   return (
     <div className="flex flex-col h-full px-6 rg-anim-in">
       <TopBar onBack={() => go("login")} />
@@ -1456,26 +1413,6 @@ function DOtpScreen({ go, params }) {
         <p className="text-xs rg-mono" style={{ color: "var(--amber)" }}>Demo OTP: 1234</p>
       </div>
       <div className="pb-8"><Btn disabled={!complete} onClick={() => go("register", params)}>Verify & continue</Btn></div>
-    </div>
-  );
-}
-
-  return (
-    <div className="flex flex-col h-full px-6 rg-anim-in">
-      <TopBar onBack={() => go("login")} />
-      <div className="flex-1 flex flex-col justify-center gap-4">
-        <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ background: "var(--accent-tint)" }}><ShieldCheck size={26} style={{ color: "var(--accent)" }} /></div>
-        <h2 className="rg-display text-2xl font-bold">Verify your number</h2>
-        <p style={{ color: "var(--muted)" }} className="text-sm -mt-2">code sent to +91 {params.mobile}</p>
-        <div className="flex gap-2 mt-2">
-          {otp.map((d, i) => (
-            <input key={i} ref={refs[i]} value={d} maxLength={1} inputMode="numeric" onChange={(e) => update(i, e.target.value)}
-              className="w-11 h-14 text-center text-xl rg-mono font-semibold rounded-2xl" style={{ background: "var(--surface-2)", border: "1.5px solid var(--border)", color: "var(--ink)" }} />
-          ))}
-        </div>
-        {error && <p className="text-xs" style={{ color: "var(--red)" }}>{error}</p>}
-      </div>
-      <div className="pb-8"><Btn disabled={!complete || verifying} onClick={handleVerify}>{verifying ? <Loader2 size={17} className="animate-spin" /> : "Verify & continue"}</Btn></div>
     </div>
   );
 }
@@ -1829,120 +1766,8 @@ function DProfileScreen({ go }) {
           </div>
         </div>
 
-        <h3 className="rg-display font-semibold text-sm mb-2">{t.yourStats || "Your Stats"}</h3>
-        <div className="grid grid-cols-3 gap-2.5 mb-4">
-          <div className="rounded-2xl p-3 text-center rg-card">
-            <p className="rg-display text-lg font-bold">{trips.length}</p>
-            <p className="text-[10px]" style={{ color: "var(--muted)" }}>{t.totalRides || "Total Rides"}</p>
-          </div>
-          <div className="rounded-2xl p-3 text-center rg-card">
-            <p className="rg-display text-lg font-bold flex items-center justify-center gap-0.5">
-              {driver?.rating || "4.8"} <Star size={12} fill="var(--amber)" color="var(--amber)" />
-            </p>
-            <p className="text-[10px]" style={{ color: "var(--muted)" }}>{t.rating || "Rating"}</p>
-          </div>
-          <div className="rounded-2xl p-3 text-center rg-card">
-            <p className="rg-display text-lg font-bold">{completion}%</p>
-            <p className="text-[10px]" style={{ color: "var(--muted)" }}>{t.acceptance || "Acceptance"}</p>
-          </div>
-        </div>
+        <h3 className=   
 
-        <button onClick={() => go("login")} className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl font-semibold mt-2" style={{ background: "var(--surface-2)", color: "var(--red)" }}>
-          <LogOut size={16} /> {t.logout || "Logout"}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function DBottomNav({ tab, setTab }) {
-  const t = useT();
-  const items = [
-    { id: "home", label: "Home", Icon: Navigation2 },
-    { id: "earnings", label: "Earnings", Icon: TrendingUp },
-    { id: "bookings", label: t.bookings, Icon: History },
-    { id: "wallet", label: t.wallet, Icon: Wallet },
-    { id: "profile", label: "Profile", Icon: User },
-  ];
-  return (
-    <div className="flex justify-around items-center py-2.5 shrink-0" style={{ background: "var(--surface)", borderTop: "1px solid var(--border)" }}>
-      {items.map((it) => {
-        const active = tab === it.id;
-        return (
-          <button key={it.id} onClick={() => setTab(it.id)} className="flex flex-col items-center gap-1 px-2.5 py-1.5 rounded-2xl transition-colors duration-200"
-            style={{ background: active ? "var(--accent-tint)" : "transparent" }}>
-            <it.Icon size={18} style={{ color: active ? "var(--accent)" : "var(--muted)", transition: "color .2s" }} />
-            <span className="text-[9px] font-medium" style={{ color: active ? "var(--accent)" : "var(--muted)" }}>{it.label}</span>
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-function DriverShell() {
-  const [screen, setScreen] = useState("login");
-  const [params, setParams] = useState({});
-  const [tab, setTab] = useState("home");
-  const go = useCallback((s, p = {}) => { setScreen(s); setParams(p); if (["home", "earnings", "bookings", "wallet", "profile"].includes(s)) setTab(s); }, []);
-  const authScreens = ["login", "otp", "register"];
-  let body;
-  if (authScreens.includes(screen)) {
-    body = screen === "login" ? <DLoginScreen go={go} /> : screen === "otp" ? <DOtpScreen go={go} params={params} /> : <DRegisterScreen go={go} params={params} />;
-  } else {
-    body = tab === "home" ? <DHomeScreen /> : tab === "earnings" ? <DEarningsScreen /> : tab === "bookings" ? <DBookingsScreen /> : tab === "wallet" ? <DWalletScreen /> : <DProfileScreen go={go} />;
-  }
-  const showNav = !authScreens.includes(screen);
-  return (
-    <div className="flex flex-col h-full relative">
-      <div className="flex-1 min-h-0 relative" key={screen}>{body}</div>
-      <ReplayVoiceButton />
-      {showNav && <DBottomNav tab={tab} setTab={(id) => go(id)} />}
-    </div>
-  );
-}
-
-/* --------------------------------- Root --------------------------------- */
-export default function RideGo() {
-  const [theme, setTheme] = useState("light");
-  const [lang, setLang] = useState("en");
-  const [voiceGuide, setVoiceGuide] = useState(false);
-  const [lastSpoken, setLastSpoken] = useState("");
-  const [announceRequests, setAnnounceRequests] = useState(true);
-  const [easyMode, setEasyMode] = useState(false);
-  const [role, setRole] = useState(null);
-
-  const [user, setUser] = useState(null);
-  const [rides, setRides] = useState([]);
-  const addRide = useCallback((r) => setRides((prev) => [r, ...prev]), []);
-
-  const [driver, setDriver] = useState(null);
-  const [online, setOnline] = useState(false);
-  const [trips, setTrips] = useState([]);
-  const addTrip = useCallback((t) => setTrips((prev) => [t, ...prev]), []);
-
-  const accentRole = role === "driver" ? "driver" : role === "passenger" ? "passenger" : "brand";
-  const vars = { ...BASE_THEME[theme], ...accentVars(accentRole) };
-
-  const ctxValue = {
-    theme, setTheme, lang, setLang, voiceGuide, setVoiceGuide, lastSpoken, setLastSpoken, announceRequests, setAnnounceRequests,
-    easyMode, setEasyMode, role, setRole,
-    user, setUser, rides, addRide, driver, setDriver, online, setOnline, trips, addTrip,
-  };
-
-  return (
-    <AppCtx.Provider value={ctxValue}>
-      <div className={`rg-root w-full h-screen flex items-center justify-center ${easyMode ? "rg-easy" : ""}`} style={{ ...vars, background: theme === "dark" ? "#050506" : "#EDEAE7" }}>
-        <FontStyles />
-        <div className="relative w-full h-full sm:h-[850px] sm:w-[400px] sm:rounded-[2.5rem] overflow-hidden flex flex-col" style={{ background: "var(--bg)", boxShadow: "var(--shadow)" }}>
-          <ErrorBoundary>
-            {role === null ? <RoleSelect /> : role === "passenger" ? <PassengerShell /> : <DriverShell />}
-          </ErrorBoundary>
-        </div>
-      </div>
-    </AppCtx.Provider>
-  );
-}
 
 
 
