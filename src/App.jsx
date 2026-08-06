@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, createContext, useContext, useCallback, memo } from "react";
+          import React, { useState, useEffect, useRef, createContext, useContext, useCallback, memo } from "react";
 import { BarChart, Bar, XAxis, ResponsiveContainer, Tooltip, CartesianGrid } from "recharts";
 import { MapContainer, TileLayer, Marker, Polyline } from "react-leaflet";
 import L from "leaflet";
@@ -1780,4 +1780,144 @@ function DProfileScreen({ go }) {
             <MapPin size={13} /> {driver?.city || "Silchar, Assam"}
           </p>
           <p className="text-xs flex items-center gap-2" style={{ color: "var(--muted)" }}>
-            <Mail size=
+            <Mail size={13} /> {driver?.email || "driver@ridego.in"}
+          </p>
+          <p className="text-xs flex items-center gap-2" style={{ color: "var(--muted)" }}>
+            <CreditCard size={13} /> DL Verified
+          </p>
+          <p className="text-xs flex items-center gap-2" style={{ color: "var(--muted)" }}>
+            <Briefcase size={13} /> {driver?.experience || "3 Years Experience"}
+          </p>
+        </div>
+
+        <h3 className="rg-display font-semibold text-sm mb-2">{t.vehicleDetails || "Vehicle Details"}</h3>
+        <div className="rounded-2xl p-4 mb-4 rg-card flex items-center gap-3">
+          <div className="w-14 h-14 rounded-xl flex items-center justify-center shrink-0" style={{ background: "var(--accent-tint)" }}>
+            <CarIcon size={26} style={{ color: "var(--accent)" }} />
+          </div>
+          <div>
+            <p className="font-semibold text-sm">{driver?.vehicleType?.name || "Sedan / Hatchback"}</p>
+            <p className="text-xs rg-mono" style={{ color: "var(--muted)" }}>{driver?.plate || "AS-01-XX-0000"}</p>
+            <p className="text-xs" style={{ color: "var(--muted)" }}>{driver?.vehicleColor || "White & Clean"}</p>
+          </div>
+        </div>
+
+        <h3 className="rg-display font-semibold text-sm mb-2">{t.yourStats || "Your Stats"}</h3>
+        <div className="grid grid-cols-3 gap-2.5 mb-4">
+          <div className="rounded-2xl p-3 text-center rg-card">
+            <p className="rg-display text-lg font-bold">{trips.length}</p>
+            <p className="text-[10px]" style={{ color: "var(--muted)" }}>{t.totalRides || "Total Rides"}</p>
+          </div>
+          <div className="rounded-2xl p-3 text-center rg-card">
+            <p className="rg-display text-lg font-bold flex items-center justify-center gap-0.5">
+              {driver?.rating || "4.8"} <Star size={12} fill="var(--amber)" color="var(--amber)" />
+            </p>
+            <p className="text-[10px]" style={{ color: "var(--muted)" }}>{t.rating || "Rating"}</p>
+          </div>
+          <div className="rounded-2xl p-3 text-center rg-card">
+            <p className="rg-display text-lg font-bold">{completion}%</p>
+            <p className="text-[10px]" style={{ color: "var(--muted)" }}>{t.acceptance || "Acceptance"}</p>
+          </div>
+        </div>
+
+        <button onClick={() => go("login")} className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl font-semibold mt-2" style={{ background: "var(--surface-2)", color: "var(--red)" }}>
+          <LogOut size={16} /> {t.logout || "Logout"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function DBottomNav({ tab, setTab }) {
+  const t = useT();
+  const items = [
+    { id: "home", label: "Home", Icon: Navigation2 },
+    { id: "earnings", label: "Earnings", Icon: TrendingUp },
+    { id: "bookings", label: t.bookings, Icon: History },
+    { id: "wallet", label: t.wallet, Icon: Wallet },
+    { id: "profile", label: "Profile", Icon: User },
+  ];
+  return (
+    <div className="flex justify-around items-center py-2.5 shrink-0" style={{ background: "var(--surface)", borderTop: "1px solid var(--border)" }}>
+      {items.map((it) => {
+        const active = tab === it.id;
+        return (
+          <button key={it.id} onClick={() => setTab(it.id)} className="flex flex-col items-center gap-1 px-2.5 py-1.5 rounded-2xl transition-colors duration-200"
+            style={{ background: active ? "var(--accent-tint)" : "transparent" }}>
+            <it.Icon size={18} style={{ color: active ? "var(--accent)" : "var(--muted)", transition: "color .2s" }} />
+            <span className="text-[9px] font-medium" style={{ color: active ? "var(--accent)" : "var(--muted)" }}>{it.label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function DriverShell() {
+  const [screen, setScreen] = useState("login");
+  const [params, setParams] = useState({});
+  const [tab, setTab] = useState("home");
+  const go = useCallback((s, p = {}) => { setScreen(s); setParams(p); if (["home", "earnings", "bookings", "wallet", "profile"].includes(s)) setTab(s); }, []);
+  const authScreens = ["login", "otp", "register"];
+  let body;
+  if (authScreens.includes(screen)) {
+    body = screen === "login" ? <DLoginScreen go={go} /> : screen === "otp" ? <DOtpScreen go={go} params={params} /> : <DRegisterScreen go={go} params={params} />;
+  } else {
+    body = tab === "home" ? <DHomeScreen /> : tab === "earnings" ? <DEarningsScreen /> : tab === "bookings" ? <DBookingsScreen /> : tab === "wallet" ? <DWalletScreen /> : <DProfileScreen go={go} />;
+  }
+  const showNav = !authScreens.includes(screen);
+  return (
+    <div className="flex flex-col h-full relative">
+      <div className="flex-1 min-h-0 relative" key={screen}>{body}</div>
+      <ReplayVoiceButton />
+      {showNav && <DBottomNav tab={tab} setTab={(id) => go(id)} />}
+    </div>
+  );
+}
+
+/* --------------------------------- Root --------------------------------- */
+export default function RideGo() {
+  const [theme, setTheme] = useState("light");
+  const [lang, setLang] = useState("en");
+  const [voiceGuide, setVoiceGuide] = useState(false);
+  const [lastSpoken, setLastSpoken] = useState("");
+  const [announceRequests, setAnnounceRequests] = useState(true);
+  const [easyMode, setEasyMode] = useState(false);
+  const [role, setRole] = useState(null);
+
+  const [user, setUser] = useState(null);
+  const [rides, setRides] = useState([]);
+  const addRide = useCallback((r) => setRides((prev) => [r, ...prev]), []);
+
+  const [driver, setDriver] = useState(null);
+  const [online, setOnline] = useState(false);
+  const [trips, setTrips] = useState([]);
+  const addTrip = useCallback((t) => setTrips((prev) => [t, ...prev]), []);
+
+  const accentRole = role === "driver" ? "driver" : role === "passenger" ? "passenger" : "brand";
+  const vars = { ...BASE_THEME[theme], ...accentVars(accentRole) };
+
+  const ctxValue = {
+    theme, setTheme, lang, setLang, voiceGuide, setVoiceGuide, lastSpoken, setLastSpoken, announceRequests, setAnnounceRequests,
+    easyMode, setEasyMode, role, setRole,
+    user, setUser, rides, addRide, driver, setDriver, online, setOnline, trips, addTrip,
+  };
+
+  return (
+    <AppCtx.Provider value={ctxValue}>
+      <div className={`rg-root w-full h-screen flex items-center justify-center ${easyMode ? "rg-easy" : ""}`} style={{ ...vars, background: theme === "dark" ? "#050506" : "#EDEAE7" }}>
+        <FontStyles />
+        <div className="relative w-full h-full sm:h-[850px] sm:w-[400px] sm:rounded-[2.5rem] overflow-hidden flex flex-col" style={{ background: "var(--bg)", boxShadow: "var(--shadow)" }}>
+          <ErrorBoundary>
+            {role === null ? <RoleSelect /> : role === "passenger" ? <PassengerShell /> : <DriverShell />}
+          </ErrorBoundary>
+        </div>
+      </div>
+    </AppCtx.Provider>
+  );
+}
+
+
+
+
+  
