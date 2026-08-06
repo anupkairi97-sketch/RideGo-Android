@@ -1,7 +1,7 @@
 import { initializeApp } from "firebase/app";
 import { FirebaseAuthentication } from "@capacitor-firebase/authentication";
 import {
-  getFirestore, collection, addDoc, doc, onSnapshot, updateDoc,
+  getFirestore, collection, addDoc, doc, setDoc, onSnapshot, updateDoc,
   query, where, limit, serverTimestamp,
 } from "firebase/firestore";
 
@@ -52,6 +52,26 @@ export async function verifyPhoneOtpNative(verificationId, code) {
   });
 
   return result.user;
+}
+
+/* ------------------------------ Passenger / Driver profiles ------------------------------ */
+// Uses the mobile number as the document ID (10-digit, no country code) since
+// registration currently runs on the demo OTP flow and has no Firebase Auth uid yet.
+// Safe to call again on re-registration — it merges instead of overwriting.
+export async function savePassenger(mobile10Digit, data) {
+  await setDoc(
+    doc(db, "passengers", mobile10Digit),
+    { mobile: mobile10Digit, ...data, updatedAt: serverTimestamp() },
+    { merge: true }
+  );
+}
+
+export async function saveDriver(mobile10Digit, data) {
+  await setDoc(
+    doc(db, "drivers", mobile10Digit),
+    { mobile: mobile10Digit, ...data, updatedAt: serverTimestamp() },
+    { merge: true }
+  );
 }
 
 export async function createRideRequest(data) {
