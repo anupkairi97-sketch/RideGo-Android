@@ -12,7 +12,8 @@ import {
   startTrip,
   completeRide,
   updateDriverLocation,
-  
+  savePassenger,
+  saveDriver,
 } from "./firebase";
   
 import "leaflet/dist/leaflet.css";
@@ -666,8 +667,25 @@ function PRegisterScreen({ go, params }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [photo, setPhoto] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
   const speakGuide = useVoiceGuide();
   useEffect(() => { loadPhoto("passenger:photo").then(setPhoto); speakGuide(t.registerVoice); }, []);
+
+  const handleCreateAccount = async () => {
+    setError("");
+    setSaving(true);
+    const finalName = name || "Priya Sharma";
+    try {
+      await savePassenger(params.mobile, { name: finalName, email, rating: 4.9 });
+      setUser({ name: finalName, mobile: params.mobile, email, rating: 4.9, photo });
+      go("home");
+    } catch (e) {
+      setSaving(false);
+      setError(e?.message || "Could not save your profile. Try again.");
+    }
+  };
+
   return (
     <div className="flex flex-col h-full px-6 rg-anim-in">
       <TopBar onBack={() => go("otp", params)} title={t.regTitle} />
@@ -677,9 +695,10 @@ function PRegisterScreen({ go, params }) {
         <Field icon={User} placeholder="Priya Sharma" value={name} onChange={(e) => setName(e.target.value)} />
         <label className="text-xs font-semibold uppercase tracking-wide mt-2" style={{ color: "var(--muted)" }}>{t.email}</label>
         <Field icon={MessageCircle} type="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+        {error && <p className="text-xs" style={{ color: "var(--red)" }}>{error}</p>}
       </div>
       <div className="pb-8 pt-3">
-        <Btn disabled={!name} onClick={() => { setUser({ name: name || "Priya Sharma", mobile: params.mobile, email, rating: 4.9, photo }); go("home"); }}>{t.createAccount}</Btn>
+        <Btn disabled={!name || saving} onClick={handleCreateAccount}>{saving ? <Loader2 size={17} className="animate-spin" /> : t.createAccount}</Btn>
       </div>
     </div>
   );
@@ -1423,9 +1442,25 @@ function DRegisterScreen({ go, params }) {
   const [plate, setPlate] = useState("");
   const [vehicleType, setVehicleType] = useState(VEHICLE_TYPES[0].id);
   const [photo, setPhoto] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
   const t = useT();
   const speakGuide = useVoiceGuide();
   useEffect(() => { loadPhoto("driver:photo").then(setPhoto); speakGuide(t.driverRegisterVoice); }, []);
+
+  const handleSaveProfile = async () => {
+    setError("");
+    setSaving(true);
+    const vt = VEHICLE_TYPES.find((v) => v.id === vehicleType);
+    try {
+      await saveDriver(params.mobile, { name, plate, vehicleType: vt.id, vehicleName: vt.name, rating: 4.8 });
+      setDriver({ name, plate, vehicleType: vt, photo, mobile: params.mobile, rating: 4.8 });
+      go("home");
+    } catch (e) {
+      setSaving(false);
+      setError(e?.message || "Could not save your profile. Try again.");
+    }
+  };
 
   return (
     <div className="flex flex-col h-full rg-anim-in">
@@ -1450,9 +1485,10 @@ function DRegisterScreen({ go, params }) {
             );
           })}
         </div>
+        {error && <p className="text-xs mt-3" style={{ color: "var(--red)" }}>{error}</p>}
       </div>
       <div className="px-6 pb-8 pt-2 shrink-0">
-        <Btn disabled={!name || !plate} onClick={() => { const vt = VEHICLE_TYPES.find((v) => v.id === vehicleType); setDriver({ name, plate, vehicleType: vt, photo, mobile: params.mobile, rating: 4.8 }); go("home"); }}>Save profile</Btn>
+        <Btn disabled={!name || !plate || saving} onClick={handleSaveProfile}>{saving ? <Loader2 size={17} className="animate-spin" /> : "Save profile"}</Btn>
       </div>
     </div>
   );
@@ -1744,31 +1780,4 @@ function DProfileScreen({ go }) {
             <MapPin size={13} /> {driver?.city || "Silchar, Assam"}
           </p>
           <p className="text-xs flex items-center gap-2" style={{ color: "var(--muted)" }}>
-            <Mail size={13} /> {driver?.email || "driver@ridego.in"}
-          </p>
-          <p className="text-xs flex items-center gap-2" style={{ color: "var(--muted)" }}>
-            <CreditCard size={13} /> DL Verified
-          </p>
-          <p className="text-xs flex items-center gap-2" style={{ color: "var(--muted)" }}>
-            <Briefcase size={13} /> {driver?.experience || "3 Years Experience"}
-          </p>
-        </div>
-
-        <h3 className="rg-display font-semibold text-sm mb-2">{t.vehicleDetails || "Vehicle Details"}</h3>
-        <div className="rounded-2xl p-4 mb-4 rg-card flex items-center gap-3">
-          <div className="w-14 h-14 rounded-xl flex items-center justify-center shrink-0" style={{ background: "var(--accent-tint)" }}>
-            <CarIcon size={26} style={{ color: "var(--accent)" }} />
-          </div>
-          <div>
-            <p className="font-semibold text-sm">{driver?.vehicleType?.name || "Sedan / Hatchback"}</p>
-            <p className="text-xs rg-mono" style={{ color: "var(--muted)" }}>{driver?.plate || "AS-01-XX-0000"}</p>
-            <p className="text-xs" style={{ color: "var(--muted)" }}>{driver?.vehicleColor || "White & Clean"}</p>
-          </div>
-        </div>
-
-        <h3 className=   
-
-
-
-
-
+            <Mail size=
