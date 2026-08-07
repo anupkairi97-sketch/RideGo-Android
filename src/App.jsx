@@ -1,8 +1,11 @@
-          import React, { useState, useEffect, useRef, createContext, useContext, useCallback, memo } from "react";
+  
+  import React, { useState, useEffect, useRef, createContext, useContext, useCallback, memo } from "react";
 import { BarChart, Bar, XAxis, ResponsiveContainer, Tooltip, CartesianGrid } from "recharts";
 import { MapContainer, TileLayer, Marker, Polyline } from "react-leaflet";
 import L from "leaflet";
 import { TextToSpeech } from "@capacitor-community/text-to-speech";
+import { Capacitor } from "@capacitor/core";
+import { PushNotifications } from "@capacitor/push-notifications";
 import {
   createRideRequest,
   watchRide,
@@ -18,7 +21,6 @@ import {
   
 import "leaflet/dist/leaflet.css";
 import "./firebase";
-import AdminApp from "./AdminPanel";
 import {
   Phone, ShieldCheck, MapPin, Search, Bike, CarTaxiFront, Zap, Car, Truck,
   Clock, Star, Wallet, Banknote, Bell, Sun, Moon, Globe, Volume2,
@@ -1877,10 +1879,60 @@ function DriverShell() {
 }
 
 /* --------------------------------- Root --------------------------------- */
-export default function RideGo() {
-          if (window.location.search.includes("admin")) {
-  return <AdminApp />;
+/* ------------------------------------------------------------------ */
+/*  Push Notifications — Step 1: register + save FCM token            */
+/*  Reuses existing savePassenger / saveDriver (merge into existing   */
+/*  passengers/{mobile} and drivers/{mobile} docs). No new collection. */
+/* ------------------------------------------------------------------ */
+function useRegisterPushNotifications(mobile, kind) {
+  useEffect(() => {
+    if (!mobile || !Capacitor.isNativePlatform()) return;
+
+    let regListener;
+    let errListener;
+    let cancelled = false;
+
+    const setup = async () => {
+      try {
+        let perm = await PushNotifications.checkPermissions();
+        if (perm.receive !== "granted") {
+          perm = await PushNotifications.requestPermissions();
+        }
+        if (perm.receive !== "granted" || cancelled) return;
+
+        regListener = await PushNotifications.addListener("registration", async (token) => {
+          try {
+            if (kind === "passenger") {
+              await savePassenger(mobile, { fcmToken: token.value });
+            } else if (kind === "driver") {
+              await saveDriver(mobile, { fcmToken: token.value });
+            }
+          } catch (e) {
+            console.error("Could not save FCM token:", e);
           }
+        });
+
+        errListener = await PushNotifications.addListener("registrationError", (err) => {
+          console.error("Push notification registration error:", err);
+        });
+
+        await PushNotifications.register();
+      } catch (e) {
+        console.error("Push notification setup failed:", e);
+      }
+    };
+
+    setup();
+
+    return () => {
+      cancelled = true;
+      regListener?.remove();
+      errListener?.remove();
+    };
+  }, [mobile, kind]);
+}
+
+export default function RideGo() {
   const [theme, setTheme] = useState("light");
   const [lang, setLang] = useState("en");
   const [voiceGuide, setVoiceGuide] = useState(false);
@@ -1897,6 +1949,9 @@ export default function RideGo() {
   const [online, setOnline] = useState(false);
   const [trips, setTrips] = useState([]);
   const addTrip = useCallback((t) => setTrips((prev) => [t, ...prev]), []);
+
+  useRegisterPushNotifications(user?.mobile, "passenger");
+  useRegisterPushNotifications(driver?.mobile, "driver");
 
   const accentRole = role === "driver" ? "driver" : role === "passenger" ? "passenger" : "brand";
   const vars = { ...BASE_THEME[theme], ...accentVars(accentRole) };
@@ -1920,6 +1975,14 @@ export default function RideGo() {
     </AppCtx.Provider>
   );
 }
+
+
+
+
+
+                                      
+  
+        
 
 
 
