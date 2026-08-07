@@ -1,7 +1,7 @@
-import { initializeApp } from "firebase/app";
+      import { initializeApp } from "firebase/app";
 import { FirebaseAuthentication } from "@capacitor-firebase/authentication";
 import {
-  getFirestore, collection, addDoc, doc, setDoc, onSnapshot, updateDoc,
+  getFirestore, collection, addDoc, doc, getDoc, setDoc, onSnapshot, updateDoc,
   query, where, limit, serverTimestamp,
 } from "firebase/firestore";
 
@@ -72,6 +72,17 @@ export async function saveDriver(mobile10Digit, data) {
     { mobile: mobile10Digit, ...data, updatedAt: serverTimestamp() },
     { merge: true }
   );
+}
+
+// Used to restore a saved session on app launch (read the profile back by mobile number).
+export async function getPassenger(mobile10Digit) {
+  const snap = await getDoc(doc(db, "passengers", mobile10Digit));
+  return snap.exists() ? snap.data() : null;
+}
+
+export async function getDriver(mobile10Digit) {
+  const snap = await getDoc(doc(db, "drivers", mobile10Digit));
+  return snap.exists() ? snap.data() : null;
 }
 
 export async function createRideRequest(data) {
