@@ -1,11 +1,11 @@
-  
-  import React, { useState, useEffect, useRef, createContext, useContext, useCallback, memo } from "react";
+     import React, { useState, useEffect, useRef, createContext, useContext, useCallback, memo } from "react";
 import { BarChart, Bar, XAxis, ResponsiveContainer, Tooltip, CartesianGrid } from "recharts";
 import { MapContainer, TileLayer, Marker, Polyline } from "react-leaflet";
 import L from "leaflet";
 import { TextToSpeech } from "@capacitor-community/text-to-speech";
 import { Capacitor } from "@capacitor/core";
 import { PushNotifications } from "@capacitor/push-notifications";
+import { Preferences } from "@capacitor/preferences";
 import {
   createRideRequest,
   watchRide,
@@ -17,6 +17,8 @@ import {
   updateDriverLocation,
   savePassenger,
   saveDriver,
+  getPassenger,
+  getDriver,
 } from "./firebase";
   
 import "leaflet/dist/leaflet.css";
@@ -682,6 +684,7 @@ function PRegisterScreen({ go, params }) {
     try {
       await savePassenger(params.mobile, { name: finalName, email, rating: 4.9 });
       setUser({ name: finalName, mobile: params.mobile, email, rating: 4.9, photo });
+      saveSession("passenger", params.mobile);
       go("home");
     } catch (e) {
       setSaving(false);
@@ -1309,7 +1312,7 @@ function PProfileScreen({ go }) {
         <ProfileRow icon={Bell} label="Notifications" right={<Toggle on={true} onClick={() => {}} />} />
         <ProfileRow icon={PhoneCall} label={t.support} right={<ChevronRight size={16} style={{ color: "var(--muted)" }} />} />
         <SwitchRoleRow />
-        <button onClick={() => go("login")} className="w-full flex items-center gap-3 py-4 mt-2 font-semibold" style={{ color: "var(--red)" }}><LogOut size={18} /> {t.logout}</button>
+        <button onClick={() => { clearSession(); setUser(null); go("login"); }} className="w-full flex items-center gap-3 py-4 mt-2 font-semibold" style={{ color: "var(--red)" }}><LogOut size={18} /> {t.logout}</button>
       </div>
     </div>
   );
@@ -1348,7 +1351,8 @@ function PBottomNav({ tab, setTab, onSos }) {
 }
 
 function PassengerShell() {
-  const [screen, setScreen] = useState("login");
+  const { user } = useApp();
+  const [screen, setScreen] = useState(user ? "home" : "login");
   const [params, setParams] = useState({});
   const [tab, setTab] = useState("home");
   const [showSos, setShowSos] = useState(false);
@@ -1458,6 +1462,7 @@ function DRegisterScreen({ go, params }) {
     try {
       await saveDriver(params.mobile, { name, plate, vehicleType: vt.id, vehicleName: vt.name, rating: 4.8 });
       setDriver({ name, plate, vehicleType: vt, photo, mobile: params.mobile, rating: 4.8 });
+      saveSession("driver", params.mobile);
       go("home");
     } catch (e) {
       setSaving(false);
@@ -1623,7 +1628,7 @@ function DHomeScreen() {
           <p className="text-sm" style={{ color: "var(--muted)" }}>Welcome back</p>
           <h1 className="rg-display text-xl font-bold">{driver?.name?.split(" ")[0] || "Driver"}</h1>
         </div>
-        <button onClick={() => setOnline((o) => !o)} className="flex items-center gap-2 px-4 py-2.5 rounded-full font-semibold text-sm"
+        <button onClick={() => setOnline((o) => { const next = !o; if (driver?.mobile) saveDriver(driver.mobile, { online: next }); return next; })} className="flex items-center gap-2 px-4 py-2.5 rounded-full font-semibold text-sm"
           style={{ background: online ? "var(--accent-grad)" : "var(--surface-2)", color: online ? "#fff" : "var(--muted)", boxShadow: online ? "0 10px 22px -10px var(--accent)" : "none", animation: online ? "rg-pulse 2s infinite" : "none" }}>
           <Power size={15} /> {online ? "Online" : "Offline"}
         </button>
@@ -1823,7 +1828,7 @@ function DProfileScreen({ go }) {
           </div>
         </div>
 
-        <button onClick={() => go("login")} className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl font-semibold mt-2" style={{ background: "var(--surface-2)", color: "var(--red)" }}>
+        <button onClick={() => { if (driver?.mobile) saveDriver(driver.mobile, { online: false }); clearSession(); setDriver(null); go("login"); }} className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl font-semibold mt-2" style={{ background: "var(--surface-2)", color: "var(--red)" }}>
           <LogOut size={16} /> {t.logout || "Logout"}
         </button>
       </div>
@@ -1857,7 +1862,8 @@ function DBottomNav({ tab, setTab }) {
 }
 
 function DriverShell() {
-  const [screen, setScreen] = useState("login");
+  const { driver } = useApp();
+  const [screen, setScreen] = useState(driver ? "home" : "login");
   const [params, setParams] = useState({});
   const [tab, setTab] = useState("home");
   const go = useCallback((s, p = {}) => { setScreen(s); setParams(p); if (["home", "earnings", "bookings", "wallet", "profile"].includes(s)) setTab(s); }, []);
@@ -1932,6 +1938,39 @@ function useRegisterPushNotifications(mobile, kind) {
   }, [mobile, kind]);
 }
 
+/* ------------------------------------------------------------------ */
+/*  Session persistence — remember login across app restarts          */
+/*  Stores only { role, mobile } on-device; the full profile is       */
+/*  re-fetched from Firestore (passengers/drivers) on next launch.    */
+/* ------------------------------------------------------------------ */
+const SESSION_KEY = "rg_session";
+
+async function saveSession(role, mobile) {
+  try {
+    await Preferences.set({ key: SESSION_KEY, value: JSON.stringify({ role, mobile }) });
+  } catch (e) {
+    console.error("Could not save session:", e);
+  }
+}
+
+async function loadSession() {
+  try {
+    const { value } = await Preferences.get({ key: SESSION_KEY });
+    return value ? JSON.parse(value) : null;
+  } catch (e) {
+    console.error("Could not load session:", e);
+    return null;
+  }
+}
+
+async function clearSession() {
+  try {
+    await Preferences.remove({ key: SESSION_KEY });
+  } catch (e) {
+    console.error("Could not clear session:", e);
+  }
+}
+
 export default function RideGo() {
   const [theme, setTheme] = useState("light");
   const [lang, setLang] = useState("en");
@@ -1949,6 +1988,29 @@ export default function RideGo() {
   const [online, setOnline] = useState(false);
   const [trips, setTrips] = useState([]);
   const addTrip = useCallback((t) => setTrips((prev) => [t, ...prev]), []);
+
+  const [booting, setBooting] = useState(true);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const session = await loadSession();
+      if (session?.mobile && session?.role === "passenger") {
+        const profile = await getPassenger(session.mobile);
+        if (!cancelled && profile) {
+          setUser({ ...profile, mobile: session.mobile });
+          setRole("passenger");
+        }
+      } else if (session?.mobile && session?.role === "driver") {
+        const profile = await getDriver(session.mobile);
+        if (!cancelled && profile) {
+          setDriver({ ...profile, mobile: session.mobile });
+          setRole("driver");
+        }
+      }
+      if (!cancelled) setBooting(false);
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   useRegisterPushNotifications(user?.mobile, "passenger");
   useRegisterPushNotifications(driver?.mobile, "driver");
@@ -1968,7 +2030,11 @@ export default function RideGo() {
         <FontStyles />
         <div className="relative w-full h-full sm:h-[850px] sm:w-[400px] sm:rounded-[2.5rem] overflow-hidden flex flex-col" style={{ background: "var(--bg)", boxShadow: "var(--shadow)" }}>
           <ErrorBoundary>
-            {role === null ? <RoleSelect /> : role === "passenger" ? <PassengerShell /> : <DriverShell />}
+            {booting ? (
+              <div className="w-full h-full flex items-center justify-center">
+                <Loader2 size={26} className="animate-spin" style={{ color: "var(--accent)" }} />
+              </div>
+            ) : role === null ? <RoleSelect /> : role === "passenger" ? <PassengerShell /> : <DriverShell />}
           </ErrorBoundary>
         </div>
       </div>
@@ -1979,12 +2045,7 @@ export default function RideGo() {
 
 
 
+       
 
-                                      
-  
-        
-
-
-
-
-  
+                    
+          
