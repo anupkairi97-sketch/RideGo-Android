@@ -16,6 +16,7 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
+const FCM_WORKER_URL = "https://ridego-fcm-0c6a.aunapkairi.workers.dev/";
 export async function sendPhoneOtpNative(mobile10Digit) {
   const fullNumber = "+91" + mobile10Digit;
 
