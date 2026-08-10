@@ -1,7 +1,7 @@
-      import { initializeApp } from "firebase/app";
+            import { initializeApp } from "firebase/app";
 import { FirebaseAuthentication } from "@capacitor-firebase/authentication";
 import {
-  getFirestore, collection, addDoc, doc, getDoc, setDoc, onSnapshot, updateDoc,
+  getFirestore, collection, addDoc, doc, getDoc, getDocs, setDoc, onSnapshot, updateDoc,
   query, where, limit, serverTimestamp,
 } from "firebase/firestore";
 
@@ -16,7 +16,9 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
+
 const FCM_WORKER_URL = "https://ridego-fcm-0c6a.aunapkairi.workers.dev/";
+
 export async function sendPhoneOtpNative(mobile10Digit) {
   const fullNumber = "+91" + mobile10Digit;
 
@@ -86,12 +88,71 @@ export async function getDriver(mobile10Digit) {
   return snap.exists() ? snap.data() : null;
 }
 
+/* ------------------------------------------------------------------ */
+/*  Push Notifications (FCM via Cloudflare Worker)                    */
+/*  No Firebase Cloud Functions / Blaze plan needed — the Worker      */
+/*  holds the service-account credentials and calls the FCM HTTP v1   */
+/*  API. This file only ever sends the target token + message to it.  */
+/* ------------------------------------------------------------------ */
+
+// Low-level: send one push to one FCM token via the Cloudflare Worker.
+// Never throws — a failed/missing push should never break a ride action.
+export async function sendPushNotification(token, title, message) {
+  if (!token) return;
+  try {
+    const res = await fetch(FCM_WORKER_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token, title, body: message }),
+    });
+    if (!res.ok) {
+      console.error("sendPushNotification failed:", res.status, await res.text().catch(() => ""));
+    }
+  } catch (e) {
+    console.error("sendPushNotification error:", e);
+  }
+}
+
+// Looks up the ride's passenger (via rideRequests/{rideId}.mobile -> passengers/{mobile}.fcmToken)
+// and sends them a push. Used after accept / arrived / start / complete.
+export async function notifyPassenger(rideId, title, message) {
+  try {
+    const rideSnap = await getDoc(doc(db, "rideRequests", rideId));
+    if (!rideSnap.exists()) return;
+    const mobile = rideSnap.data().mobile;
+    if (!mobile) return;
+    const passenger = await getPassenger(mobile);
+    if (!passenger?.fcmToken) return;
+    await sendPushNotification(passenger.fcmToken, title, message);
+  } catch (e) {
+    console.error("notifyPassenger failed:", e);
+  }
+}
+
+// Sends a push to every driver currently marked online (drivers/{mobile}.online == true).
+// Used after a passenger creates a new ride request.
+export async function notifyNearbyDrivers(title, message) {
+  try {
+    const q = query(collection(db, "drivers"), where("online", "==", true));
+    const snap = await getDocs(q);
+    const sends = [];
+    snap.forEach((d) => {
+      const token = d.data()?.fcmToken;
+      if (token) sends.push(sendPushNotification(token, title, message));
+    });
+    await Promise.all(sends);
+  } catch (e) {
+    console.error("notifyNearbyDrivers failed:", e);
+  }
+}
+
 export async function createRideRequest(data) {
   const docRef = await addDoc(collection(db, "rideRequests"), {
     ...data, status: "searching",
     driverName: null, driverPlate: null, driverRating: null, driverMobile: null, driverPhoto: null,
     createdAt: serverTimestamp(),
   });
+  notifyNearbyDrivers("New Ride Request", `Pickup: ${data.pickup || "Nearby"} → ${data.drop || "Drop"}`);
   return docRef.id;
 }
 
@@ -145,10 +206,20 @@ export async function acceptRide(rideId, driverInfo) {
     status: "accepted", driverName: driverInfo.name, driverPlate: driverInfo.plate,
     driverRating: driverInfo.rating, driverMobile: driverInfo.mobile, driverPhoto: driverInfo.photo || null,
   });
+  notifyPassenger(rideId, "Driver Accepted", `${driverInfo.name || "Your driver"} is on the way!`);
 }
-export async function markArrived(rideId) { await updateDoc(doc(db, "rideRequests", rideId), { status: "arrived" }); }
-export async function startTrip(rideId) { await updateDoc(doc(db, "rideRequests", rideId), { status: "ontrip" }); }
-export async function completeRide(rideId) { await updateDoc(doc(db, "rideRequests", rideId), { status: "completed" }); }
+export async function markArrived(rideId) {
+  await updateDoc(doc(db, "rideRequests", rideId), { status: "arrived" });
+  notifyPassenger(rideId, "Driver Arrived", "Your driver has arrived at the pickup point.");
+}
+export async function startTrip(rideId) {
+  await updateDoc(doc(db, "rideRequests", rideId), { status: "ontrip" });
+  notifyPassenger(rideId, "Trip Started", "Your trip has started. Enjoy your ride!");
+}
+export async function completeRide(rideId) {
+  await updateDoc(doc(db, "rideRequests", rideId), { status: "completed" });
+  notifyPassenger(rideId, "Trip Completed", "You have reached your destination. Thanks for riding with RideGo!");
+}
 export async function updateDriverLocation(rideId, lat, lng) {
   await updateDoc(doc(db, "rideRequests", rideId), {
     driverLocation: {
