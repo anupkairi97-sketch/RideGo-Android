@@ -1,8 +1,9 @@
-            import { initializeApp } from "firebase/app";
+
+import { initializeApp } from "firebase/app";
 import { FirebaseAuthentication } from "@capacitor-firebase/authentication";
 import {
   getFirestore, collection, addDoc, doc, getDoc, getDocs, setDoc, onSnapshot, updateDoc,
-  query, where, limit, serverTimestamp,
+  query, where, limit, orderBy, serverTimestamp, runTransaction,
 } from "firebase/firestore";
 
 const firebaseConfig = {
@@ -129,6 +130,22 @@ export async function notifyPassenger(rideId, title, message) {
   }
 }
 
+// Mirrors notifyPassenger: looks up the ride's assigned driver
+// (rideRequests/{rideId}.driverMobile -> drivers/{mobile}.fcmToken) and sends them a push.
+export async function notifyDriver(rideId, title, message) {
+  try {
+    const rideSnap = await getDoc(doc(db, "rideRequests", rideId));
+    if (!rideSnap.exists()) return;
+    const driverMobile = rideSnap.data().driverMobile;
+    if (!driverMobile) return;
+    const drv = await getDriver(driverMobile);
+    if (!drv?.fcmToken) return;
+    await sendPushNotification(drv.fcmToken, title, message);
+  } catch (e) {
+    console.error("notifyDriver failed:", e);
+  }
+}
+
 // Sends a push to every driver currently marked online (drivers/{mobile}.online == true).
 // Used after a passenger creates a new ride request.
 export async function notifyNearbyDrivers(title, message) {
@@ -176,6 +193,7 @@ export function watchSearchingRequests(callback) {
   const q = query(
     collection(db, "rideRequests"),
     where("status", "==", "searching"),
+    orderBy("createdAt", "asc"),
     limit(1)
   );
 
@@ -201,10 +219,21 @@ export function watchSearchingRequests(callback) {
 }
 
 
+// Uses a Firestore transaction so that if two drivers hit "Accept" on the
+// same ride at nearly the same instant, only the first one actually wins —
+// the second gets a clear error instead of silently overwriting the first.
 export async function acceptRide(rideId, driverInfo) {
-  await updateDoc(doc(db, "rideRequests", rideId), {
-    status: "accepted", driverName: driverInfo.name, driverPlate: driverInfo.plate,
-    driverRating: driverInfo.rating, driverMobile: driverInfo.mobile, driverPhoto: driverInfo.photo || null,
+  const rideRef = doc(db, "rideRequests", rideId);
+  await runTransaction(db, async (tx) => {
+    const snap = await tx.get(rideRef);
+    if (!snap.exists()) throw new Error("This ride no longer exists.");
+    if (snap.data().status !== "searching") {
+      throw new Error("This ride was just accepted by another driver.");
+    }
+    tx.update(rideRef, {
+      status: "accepted", driverName: driverInfo.name, driverPlate: driverInfo.plate,
+      driverRating: driverInfo.rating, driverMobile: driverInfo.mobile, driverPhoto: driverInfo.photo || null,
+    });
   });
   notifyPassenger(rideId, "Driver Accepted", `${driverInfo.name || "Your driver"} is on the way!`);
 }
@@ -219,6 +248,15 @@ export async function startTrip(rideId) {
 export async function completeRide(rideId) {
   await updateDoc(doc(db, "rideRequests", rideId), { status: "completed" });
   notifyPassenger(rideId, "Trip Completed", "You have reached your destination. Thanks for riding with RideGo!");
+}
+// cancelledBy: "passenger" or "driver" — notifies whichever side didn't cancel.
+export async function cancelRide(rideId, cancelledBy) {
+  await updateDoc(doc(db, "rideRequests", rideId), { status: "cancelled", cancelledBy: cancelledBy || null });
+  if (cancelledBy === "passenger") {
+    notifyDriver(rideId, "Ride Cancelled", "The passenger has cancelled this ride.");
+  } else if (cancelledBy === "driver") {
+    notifyPassenger(rideId, "Ride Cancelled", "Your driver had to cancel. Please try booking again.");
+  }
 }
 export async function updateDriverLocation(rideId, lat, lng) {
   await updateDoc(doc(db, "rideRequests", rideId), {
