@@ -1,4 +1,4 @@
-     import React, { useState, useEffect, useRef, createContext, useContext, useCallback, memo } from "react";
+  import React, { useState, useEffect, useRef, createContext, useContext, useCallback, memo } from "react";
 import { BarChart, Bar, XAxis, ResponsiveContainer, Tooltip, CartesianGrid } from "recharts";
 import { MapContainer, TileLayer, Marker, Polyline } from "react-leaflet";
 import L from "leaflet";
@@ -861,6 +861,7 @@ function PVehicleScreen({ go, params }) {
                 drop: params.drop,
                 vehicle: vehicle.name,
                 fare: fareFor(vehicle),
+                distanceKm: DISTANCE_KM,
                 payment,
                 status: "searching",
                 passenger: params.name || "Passenger",
@@ -2045,7 +2046,15 @@ export default function RideGo() {
 
 
 
-       
+             
 
-                    
+      
+
+
+                            
+
+
+ 
+
+
           
