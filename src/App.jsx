@@ -1,4 +1,4 @@
-  import React, { useState, useEffect, useRef, createContext, useContext, useCallback, memo } from "react";
+import React, { useState, useEffect, useRef, createContext, useContext, useCallback, memo } from "react";
 import { BarChart, Bar, XAxis, ResponsiveContainer, Tooltip, CartesianGrid } from "recharts";
 import { MapContainer, TileLayer, Marker, Polyline } from "react-leaflet";
 import L from "leaflet";
@@ -19,6 +19,7 @@ import {
   saveDriver,
   getPassenger,
   getDriver,
+  cancelRide,
 } from "./firebase";
   
 import "leaflet/dist/leaflet.css";
@@ -240,13 +241,19 @@ const dropMarkerIcon = L.divIcon({
   iconSize: [14, 14],
   iconAnchor: [7, 7],
 });
+const driverCarIcon = L.divIcon({
+  className: "",
+  html: '<div style="width:26px;height:26px;border-radius:50%;background:#16A34A;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;font-size:14px;">🚗</div>',
+  iconSize: [26, 26],
+  iconAnchor: [13, 13],
+});
 const MOCK_REQUESTS = [
   { passenger: "Ritu Verma", mobile: "98765 43210", pickup: "Sector 12, Main Road", drop: "Railway Station", distanceKm: 4.5 },
   { passenger: "Aman Gupta", mobile: "91234 56780", pickup: "Lakhipur Chowk", drop: "Silchar Railway Station", distanceKm: 9.2 },
   { passenger: "Sneha Roy", mobile: "89012 34567", pickup: "Green Park", drop: "City Mall", distanceKm: 3.1 },
   { passenger: "Imran Khan", mobile: "97654 32109", pickup: "Bus Stand", drop: "Medical College", distanceKm: 6.0 },
 ];
-function fareFor(v) { return Math.round(v.base + v.perKm * DISTANCE_KM); }
+function fareFor(v, distanceKm = DISTANCE_KM) { return Math.round(v.base + v.perKm * distanceKm); }
 
 const VOICE_LANG = { en: "en-IN", hi: "hi-IN", bn: "bn-IN" };
 async function speak(text, lang) {
@@ -807,9 +814,22 @@ function PVehicleScreen({ go, params }) {
   const t = useT();
   const [selected, setSelected] = useState(VEHICLES[0].id);
   const [payment, setPayment] = useState("cash");
+  const [realDistanceKm, setRealDistanceKm] = useState(DISTANCE_KM);
   const vehicle = VEHICLES.find((v) => v.id === selected);
   const speakGuide = useVoiceGuide();
   useEffect(() => { speakGuide(t.chooseRideVoice); }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const [p, d] = await Promise.all([geocodeAddress(params.pickup), geocodeAddress(params.drop)]);
+      if (cancelled || !p || !d) return;
+      const route = await getRoute(p, d);
+      if (!cancelled && route?.distanceKm) setRealDistanceKm(route.distanceKm);
+    })();
+    return () => { cancelled = true; };
+  }, [params.pickup, params.drop]);
+
   const payOptions = [
     { id: "cash", label: t.cash, Icon: Banknote }, { id: "upi", label: t.upi, Icon: Wallet },
     { id: "wallet", label: t.walletLabel, Icon: Wallet }, { id: "card", label: t.card, Icon: CreditCard },
@@ -833,7 +853,7 @@ function PVehicleScreen({ go, params }) {
                 <p className="font-semibold text-[15px]">{v.name}</p>
                 <p className="text-xs flex items-center gap-1" style={{ color: "var(--muted)" }}><Clock size={11} /> {v.eta} min · {v.capacity} {t.capacity}</p>
               </div>
-              <p className="rg-mono font-semibold text-[15px]">₹{fareFor(v)}</p>
+              <p className="rg-mono font-semibold text-[15px]">₹{fareFor(v, realDistanceKm)}</p>
             </button>
           );
         })}
@@ -851,7 +871,7 @@ function PVehicleScreen({ go, params }) {
       <div className="px-6 py-5 shrink-0" style={{ borderTop: "1px solid var(--border)" }}>
         <div className="flex justify-between items-center mb-3">
           <span className="text-sm" style={{ color: "var(--muted)" }}>{t.estFare}</span>
-          <span className="rg-display text-xl font-bold">₹{fareFor(vehicle)}</span>
+          <span className="rg-display text-xl font-bold">₹{fareFor(vehicle, realDistanceKm)}</span>
         </div>
         <Btn
           onClick={async () => {
@@ -860,14 +880,14 @@ function PVehicleScreen({ go, params }) {
                 pickup: params.pickup,
                 drop: params.drop,
                 vehicle: vehicle.name,
-                fare: fareFor(vehicle),
-                distanceKm: DISTANCE_KM,
+                fare: fareFor(vehicle, realDistanceKm),
+                distanceKm: realDistanceKm,
                 payment,
                 status: "searching",
                 passenger: params.name || "Passenger",
                 mobile: params.mobile || "",
               });
-              go("searching", { ...params, vehicle, payment, rideId });
+              go("searching", { ...params, vehicle, payment, rideId, fare: fareFor(vehicle, realDistanceKm), distanceKm: realDistanceKm });
             } catch (e) {
               console.error(e);
               alert("Firebase Error:\n" + e.message);
@@ -927,7 +947,14 @@ function PSearchingScreen({ go, params }) {
         {params.vehicle?.Icon ? <params.vehicle.Icon size={34} style={{ color: "var(--accent)" }} /> : <Car size={34} style={{ color: "var(--accent)" }} />}
       </div>
       <h2 className="rg-display text-xl font-bold mb-1">{t.searching}</h2>
-      <p className="text-sm" style={{ color: "var(--muted)" }}>{params.pickup}</p>
+      <p className="text-sm mb-6" style={{ color: "var(--muted)" }}>{params.pickup}</p>
+      <button
+        onClick={() => { if (params.rideId) cancelRide(params.rideId, "passenger").catch(console.error); go("home"); }}
+        className="text-sm font-semibold px-5 py-2.5 rounded-full"
+        style={{ color: "var(--red)", background: "var(--surface-2)" }}
+      >
+        {t.cancelRide}
+      </button>
     </div>
   );
 }
@@ -959,9 +986,58 @@ function SOSSheet({ onClose }) {
 }
 
 /* Live route map: pickup + drop markers, a road-like route line, and a moving car icon */
-function TrackingMap({ height = 190 }) {
+/* ------------------------------------------------------------------ */
+/*  Geocoding — Nominatim (OpenStreetMap), free, no API key needed    */
+/*  Converts a typed address (e.g. "Pailapool, Silchar") into real    */
+/*  [lat, lng] coordinates. In-memory cache avoids re-geocoding the    */
+/*  same address twice in one session.                                */
+/* ------------------------------------------------------------------ */
+const geocodeCache = {};
+async function geocodeAddress(address) {
+  if (!address) return null;
+  if (geocodeCache[address]) return geocodeCache[address];
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=in&q=${encodeURIComponent(address)}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data && data[0]) {
+      const point = [parseFloat(data[0].lat), parseFloat(data[0].lon)];
+      geocodeCache[address] = point;
+      return point;
+    }
+  } catch (e) {
+    console.error("Geocoding failed for:", address, e);
+  }
+  return null;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Routing — OSRM public demo server, free, no API key needed        */
+/*  Returns the real road route + real distance between two           */
+/*  [lat, lng] points. Returns null on failure (callers fall back).   */
+/* ------------------------------------------------------------------ */
+async function getRoute(pickupPt, dropPt) {
+  if (!pickupPt || !dropPt) return null;
+  try {
+    const url = `https://router.project-osrm.org/route/v1/driving/${pickupPt[1]},${pickupPt[0]};${dropPt[1]},${dropPt[0]}?overview=full&geometries=geojson`;
+    const res = await fetch(url);
+    const data = await res.json();
+    const route = data?.routes?.[0];
+    if (!route) return null;
+    const coords = route.geometry.coordinates.map(([lng, lat]) => [lat, lng]);
+    return { coords, distanceKm: route.distance / 1000, durationMin: route.duration / 60 };
+  } catch (e) {
+    console.error("OSRM routing failed:", e);
+    return null;
+  }
+}
+
+function TrackingMap({ height = 190, pickup, drop, driverLocation }) {
   const [coords, setCoords] = useState(null);
   const [locError, setLocError] = useState(false);
+  const [pickupPt, setPickupPt] = useState(null);
+  const [dropPt, setDropPt] = useState(null);
+  const [routeCoords, setRouteCoords] = useState(null);
 
   useEffect(() => {
     if (!navigator.geolocation) { setLocError(true); return; }
@@ -972,11 +1048,29 @@ function TrackingMap({ height = 190 }) {
     );
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const [p, d] = await Promise.all([geocodeAddress(pickup), geocodeAddress(drop)]);
+      if (cancelled) return;
+      if (p) setPickupPt(p);
+      if (d) setDropPt(d);
+      if (p && d) {
+        const route = await getRoute(p, d);
+        if (!cancelled && route?.coords) setRouteCoords(route.coords);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [pickup, drop]);
+
   const base = coords || FALLBACK_COORDS;
-  const ready = coords || locError;
-  const pickupPt = [base[0] - 0.01, base[1] - 0.008];
-  const dropPt = [base[0] + 0.012, base[1] + 0.014];
-  const route = [pickupPt, [base[0] - 0.004, base[1] + 0.001], [base[0] + 0.001, base[1] + 0.009], dropPt];
+  const hasRealPoints = !!(pickupPt && dropPt);
+  const ready = hasRealPoints || coords || locError;
+  const fallbackPickup = [base[0] - 0.01, base[1] - 0.008];
+  const fallbackDrop = [base[0] + 0.012, base[1] + 0.014];
+  const finalPickup = pickupPt || fallbackPickup;
+  const finalDrop = dropPt || fallbackDrop;
+  const route = routeCoords || [finalPickup, finalDrop];
 
   return (
     <div className="relative rounded-2xl overflow-hidden" style={{ background: "var(--accent-tint)", height }}>
@@ -986,12 +1080,22 @@ function TrackingMap({ height = 190 }) {
         </div>
       )}
       {ready && (
-        <MapContainer center={base} zoom={14} zoomControl={true} scrollWheelZoom={true} style={{ width: "100%", height: "100%" }}>
+        <MapContainer
+          key={hasRealPoints ? "real" : "fallback"}
+          center={!hasRealPoints ? base : undefined}
+          zoom={!hasRealPoints ? 14 : undefined}
+          bounds={hasRealPoints ? [finalPickup, finalDrop] : undefined}
+          boundsOptions={{ padding: [40, 40] }}
+          zoomControl={true} scrollWheelZoom={true} style={{ width: "100%", height: "100%" }}>
           <TileLayer attribution='&copy; OpenStreetMap contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
           <Polyline positions={route} pathOptions={{ color: "#16A34A", weight: 4 }} />
-          <Marker position={pickupPt} icon={passengerMarkerIcon} />
-          <Marker position={dropPt} icon={dropMarkerIcon} />
+          <Marker position={finalPickup} icon={passengerMarkerIcon} />
+          <Marker position={finalDrop} icon={dropMarkerIcon} />
+          {driverLocation?.lat != null && driverLocation?.lng != null && (
+            <Marker position={[driverLocation.lat, driverLocation.lng]} icon={driverCarIcon} />
+          )}
         </MapContainer>
+
       )}
     </div>
   );
@@ -1003,7 +1107,8 @@ function PTrackingScreen({ go, params }) {
   const [showSos, setShowSos] = useState(false);
   const [arrived, setArrived] = useState(false);
   const [showFare, setShowFare] = useState(false);
-  const fare = fareFor(vehicle);
+  const [liveDriverLocation, setLiveDriverLocation] = useState(null);
+  const fare = params.fare || fareFor(vehicle);
   const speakGuide = useVoiceGuide();
   const spokenArrived = useRef(false);
   const spokenOnTrip = useRef(false);
@@ -1015,6 +1120,7 @@ function PTrackingScreen({ go, params }) {
       const unsub = watchRide(params.rideId, (data) => {
         try {
           if (!data) return;
+          if (data.driverLocation) setLiveDriverLocation(data.driverLocation);
           if (data.status === "arrived" && !spokenArrived.current) {
             spokenArrived.current = true;
             setArrived(true);
@@ -1024,6 +1130,10 @@ function PTrackingScreen({ go, params }) {
             spokenOnTrip.current = true;
             speakGuide(t.tripStartedVoice);
             go("ontrip", { ...params, fare });
+          }
+          if (data.status === "cancelled") {
+            alert("Your driver had to cancel this ride. Please try booking again.");
+            go("home");
           }
         } catch (err) { console.error("watchRide callback error:", err); }
       });
@@ -1053,7 +1163,7 @@ function PTrackingScreen({ go, params }) {
         </div>
       </div>
 
-      <div className="px-5"><TrackingMap /></div>
+      <div className="px-5"><TrackingMap pickup={params.pickup} drop={params.drop} driverLocation={liveDriverLocation} /></div>
 
       <div className="flex-1 overflow-y-auto rg-scroll px-5 pt-3">
         <button className="w-full flex items-center justify-center gap-2 rounded-2xl py-2.5 mb-3 text-xs font-semibold" style={{ background: "var(--surface-2)", color: "var(--accent-dark)" }}>
@@ -1081,7 +1191,7 @@ function PTrackingScreen({ go, params }) {
         {showFare && (
           <div className="rounded-2xl p-3.5 mb-3 text-xs" style={{ background: "var(--surface-2)" }}>
             <div className="flex justify-between py-1"><span style={{ color: "var(--muted)" }}>Base fare</span><span className="font-semibold">₹{vehicle.base}</span></div>
-            <div className="flex justify-between py-1"><span style={{ color: "var(--muted)" }}>Distance ({DISTANCE_KM} km)</span><span className="font-semibold">₹{fare - vehicle.base}</span></div>
+            <div className="flex justify-between py-1"><span style={{ color: "var(--muted)" }}>Distance ({(params.distanceKm || DISTANCE_KM).toFixed(1)} km)</span><span className="font-semibold">₹{fare - vehicle.base}</span></div>
           </div>
         )}
 
@@ -1092,7 +1202,7 @@ function PTrackingScreen({ go, params }) {
 
       <div className="px-5 pb-6 pt-2 flex gap-3 shrink-0">
         <button onClick={() => setShowSos(true)} className="rounded-2xl px-4 py-3.5 flex items-center justify-center" style={{ background: "var(--red)", color: "#fff" }}><ShieldAlert size={17} /></button>
-        <Btn variant="outline" className="flex-1" onClick={() => go("home")}>{t.cancelRide}</Btn>
+        <Btn variant="outline" className="flex-1" onClick={() => { if (params.rideId) cancelRide(params.rideId, "passenger").catch(console.error); go("home"); }}>{t.cancelRide}</Btn>
       </div>
       {showSos && <SOSSheet onClose={() => setShowSos(false)} />}
     </div>
@@ -1161,7 +1271,7 @@ function PInTripScreen({ go, params }) {
           <div className="flex items-start gap-2.5 pt-2" style={{ borderTop: "1px dashed var(--border)" }}>
             <div className="w-2.5 h-2.5 rounded-full mt-1 shrink-0" style={{ background: "var(--red)" }} />
             <p className="text-xs font-semibold flex-1">{params.drop}</p>
-            <p className="text-[11px] text-right shrink-0" style={{ color: "var(--muted)" }}>{DISTANCE_KM} km<br />{params.vehicle.eta * 5} min</p>
+            <p className="text-[11px] text-right shrink-0" style={{ color: "var(--muted)" }}>{(params.distanceKm || DISTANCE_KM).toFixed(1)} km<br />{params.vehicle.eta * 5} min</p>
           </div>
         </div>
 
@@ -1538,15 +1648,19 @@ function DHomeScreen() {
   const [request, setRequest] = useState(null);
   const [activeTrip, setActiveTrip] = useState(null);
   const [tripStage, setTripStage] = useState("toPickup");
+  const [rejectedIds, setRejectedIds] = useState(() => new Set());
   const announce = useAnnounce();
   const speakGuide = useVoiceGuide();
   useEffect(() => { speakGuide(t.driverHomeVoice); }, []);
 
   useEffect(() => {
     if (!online || activeTrip) { setRequest(null); return; }
-    const unsub = watchSearchingRequests((r) => setRequest(r));
+    const unsub = watchSearchingRequests((r) => {
+      if (r?.id && rejectedIds.has(r.id)) { setRequest(null); return; }
+      setRequest(r);
+    });
     return () => unsub && unsub();
-  }, [online, activeTrip]);
+  }, [online, activeTrip, rejectedIds]);
 
   useEffect(() => {
     if (!activeTrip?.id) return;
@@ -1558,6 +1672,18 @@ function DHomeScreen() {
     }, 3000);
     return () => clearInterval(id);
   }, [activeTrip]);
+
+  useEffect(() => {
+    if (!activeTrip?.id) return;
+    const unsub = watchRide(activeTrip.id, (data) => {
+      if (data?.status === "cancelled") {
+        alert("The passenger has cancelled this ride.");
+        setActiveTrip(null);
+        setTripStage("toPickup");
+      }
+    });
+    return () => unsub && unsub();
+  }, [activeTrip?.id]);
 
   useEffect(() => {
     if (!request) return;
@@ -1575,11 +1701,18 @@ function DHomeScreen() {
           name: driver?.name, plate: driver?.plate, rating: driver?.rating,
           mobile: driver?.mobile, photo: driver?.photo || null,
         });
-      } catch (e) {}
+      } catch (e) {
+        alert(e?.message || "Could not accept this ride — it may have just been taken by another driver.");
+        setRequest(null);
+        return;
+      }
     }
     setActiveTrip({ ...request, fare }); setTripStage("toPickup"); setRequest(null);
   };
-  const reject = () => setRequest(null);
+  const reject = () => {
+    if (request?.id) setRejectedIds((prev) => new Set(prev).add(request.id));
+    setRequest(null);
+  };
   const advance = async () => {
     if (tripStage === "toPickup") {
       if (activeTrip.id) await markArrived(activeTrip.id).catch(() => {});
@@ -2016,6 +2149,26 @@ export default function RideGo() {
   useRegisterPushNotifications(user?.mobile, "passenger");
   useRegisterPushNotifications(driver?.mobile, "driver");
 
+  const [pushToast, setPushToast] = useState(null);
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    let listener;
+    let cancelled = false;
+    PushNotifications.addListener("pushNotificationReceived", (notification) => {
+      setPushToast({
+        title: notification.title || "RideGo",
+        body: notification.body || "",
+      });
+    }).then((l) => { if (cancelled) l.remove(); else listener = l; });
+    return () => { cancelled = true; listener?.remove(); };
+  }, []);
+
+  useEffect(() => {
+    if (!pushToast) return;
+    const id = setTimeout(() => setPushToast(null), 4500);
+    return () => clearTimeout(id);
+  }, [pushToast]);
+
   const accentRole = role === "driver" ? "driver" : role === "passenger" ? "passenger" : "brand";
   const vars = { ...BASE_THEME[theme], ...accentVars(accentRole) };
 
@@ -2031,6 +2184,21 @@ export default function RideGo() {
         <FontStyles />
         <div className="relative w-full h-full sm:h-[850px] sm:w-[400px] sm:rounded-[2.5rem] overflow-hidden flex flex-col" style={{ background: "var(--bg)", boxShadow: "var(--shadow)" }}>
           <ErrorBoundary>
+            {pushToast && (
+              <div
+                className="absolute top-0 left-0 right-0 z-50 mx-3 mt-3 rounded-2xl px-4 py-3.5 flex items-start gap-3 rg-anim-in"
+                style={{ background: "var(--surface)", boxShadow: "var(--shadow)", border: "1px solid var(--border)" }}
+                onClick={() => setPushToast(null)}
+              >
+                <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ background: "var(--accent-tint)" }}>
+                  <Bell size={16} style={{ color: "var(--accent)" }} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm truncate">{pushToast.title}</p>
+                  {pushToast.body && <p className="text-xs mt-0.5" style={{ color: "var(--muted)" }}>{pushToast.body}</p>}
+                </div>
+              </div>
+            )}
             {booting ? (
               <div className="w-full h-full flex items-center justify-center">
                 <Loader2 size={26} className="animate-spin" style={{ color: "var(--accent)" }} />
@@ -2046,10 +2214,11 @@ export default function RideGo() {
 
 
 
-             
 
-      
 
+
+
+  
 
                             
 
