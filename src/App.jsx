@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, createContext, useContext, useCallback, memo } from "react";
+    import React, { useState, useEffect, useRef, createContext, useContext, useCallback, memo } from "react";
 import { BarChart, Bar, XAxis, ResponsiveContainer, Tooltip, CartesianGrid } from "recharts";
 import { MapContainer, TileLayer, Marker, Polyline } from "react-leaflet";
 import L from "leaflet";
@@ -769,7 +769,7 @@ function PHomeScreen({ go }) {
         </div>
         <div className="flex flex-col gap-2 mb-4">
           {VEHICLES.map((v) => (
-            <button key={v.id} onClick={() => go("vehicles", { pickup, drop, preselect: v.id })} className="flex items-center gap-3 rounded-2xl p-3 rg-card text-left">
+            <button key={v.id} onClick={() => go("vehicles", { pickup, drop, preselect: v.id, mobile: user?.mobile, name: user?.name })} className="flex items-center gap-3 rounded-2xl p-3 rg-card text-left">
               <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style={{ background: "var(--accent-tint)" }}>
                 <v.Icon size={20} style={{ color: "var(--accent)" }} />
               </div>
@@ -783,7 +783,7 @@ function PHomeScreen({ go }) {
         </div>
 
         <div className="grid grid-cols-3 gap-2.5 mb-4">
-          <button onClick={() => go("vehicles", { pickup, drop })} className="flex flex-col items-center gap-1.5 rounded-2xl py-3" style={{ background: "var(--surface-2)" }}>
+          <button onClick={() => go("vehicles", { pickup, drop, mobile: user?.mobile, name: user?.name })} className="flex flex-col items-center gap-1.5 rounded-2xl py-3" style={{ background: "var(--surface-2)" }}>
             <Zap size={18} style={{ color: "var(--accent)" }} />
             <span className="text-xs font-semibold">{t.rideNow}</span>
             <span className="text-[10px]" style={{ color: "var(--muted)" }}>{t.quickRide}</span>
@@ -2215,14 +2215,9 @@ export default function RideGo() {
 
 
 
+            
 
-
-
-  
-
-                            
-
-
+    
  
 
 
