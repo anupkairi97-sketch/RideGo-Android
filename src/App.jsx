@@ -1,4 +1,5 @@
-    import React, { useState, useEffect, useRef, createContext, useContext, useCallback, memo } from "react";
+ 
+import React, { useState, useEffect, useRef, createContext, useContext, useCallback, memo } from "react";
 import { BarChart, Bar, XAxis, ResponsiveContainer, Tooltip, CartesianGrid } from "recharts";
 import { MapContainer, TileLayer, Marker, Polyline } from "react-leaflet";
 import L from "leaflet";
@@ -815,6 +816,7 @@ function PVehicleScreen({ go, params }) {
   const [selected, setSelected] = useState(VEHICLES[0].id);
   const [payment, setPayment] = useState("cash");
   const [realDistanceKm, setRealDistanceKm] = useState(DISTANCE_KM);
+  const [etaMin, setEtaMin] = useState(null);
   const vehicle = VEHICLES.find((v) => v.id === selected);
   const speakGuide = useVoiceGuide();
   useEffect(() => { speakGuide(t.chooseRideVoice); }, []);
@@ -825,7 +827,9 @@ function PVehicleScreen({ go, params }) {
       const [p, d] = await Promise.all([geocodeAddress(params.pickup), geocodeAddress(params.drop)]);
       if (cancelled || !p || !d) return;
       const route = await getRoute(p, d);
-      if (!cancelled && route?.distanceKm) setRealDistanceKm(route.distanceKm);
+      if (cancelled || !route) return;
+      if (route.distanceKm) setRealDistanceKm(route.distanceKm);
+      if (route.durationMin) setEtaMin(Math.round(route.durationMin));
     })();
     return () => { cancelled = true; };
   }, [params.pickup, params.drop]);
@@ -837,8 +841,12 @@ function PVehicleScreen({ go, params }) {
   return (
     <div className="flex flex-col h-full rg-anim-in">
       <TopBar onBack={() => go("home")} title={t.chooseRide} />
-      <div className="px-6 pb-2 text-xs flex items-center gap-1.5" style={{ color: "var(--muted)" }}>
-        <MapPin size={12} /> {params.pickup} <ChevronRight size={11} /> {params.drop}
+      <div className="px-6"><TrackingMap height={150} pickup={params.pickup} drop={params.drop} /></div>
+      <div className="px-6 pt-2 pb-2 flex items-center justify-between text-xs">
+        <span className="flex items-center gap-1.5" style={{ color: "var(--muted)" }}><MapPin size={12} /> {params.pickup} <ChevronRight size={11} /> {params.drop}</span>
+        <span className="font-semibold rg-mono shrink-0 ml-2" style={{ color: "var(--accent)" }}>
+          {realDistanceKm.toFixed(1)} km{etaMin ? ` · ${etaMin} min` : ""}
+        </span>
       </div>
       <div className="flex-1 overflow-y-auto rg-scroll px-6 pt-2 flex flex-col gap-2.5">
         {VEHICLES.map((v) => {
@@ -915,7 +923,7 @@ function PSearchingScreen({ go, params }) {
               driver: {
                 name: data.driverName || "Driver", plate: data.driverPlate || "",
                 rating: data.driverRating || 4.5, mobile: data.driverMobile || "",
-                photo: data.driverPhoto || null,
+                photo: data.driverPhoto || null, vehicleName: data.driverVehicleName || "",
                 otp: 1000 + Math.floor(Math.random() * 8999),
               },
             });
@@ -941,20 +949,28 @@ function PSearchingScreen({ go, params }) {
   }, []);
 
   return (
-    <div className="flex flex-col h-full items-center justify-center px-8 text-center rg-anim-in">
-      <div className="relative w-24 h-24 mb-6 flex items-center justify-center">
-        <div className="absolute inset-0 rounded-full rg-glow" style={{ background: "var(--accent-tint)" }} />
-        {params.vehicle?.Icon ? <params.vehicle.Icon size={34} style={{ color: "var(--accent)" }} /> : <Car size={34} style={{ color: "var(--accent)" }} />}
+    <div className="flex flex-col h-full px-6 pt-4 rg-anim-in">
+      <TrackingMap height={220} pickup={params.pickup} drop={params.drop} />
+      <div className="flex-1 flex flex-col items-center justify-center text-center">
+        <div className="relative w-20 h-20 mb-5 flex items-center justify-center">
+          <div className="absolute inset-0 rounded-full rg-glow" style={{ background: "var(--accent-tint)" }} />
+          {params.vehicle?.Icon ? <params.vehicle.Icon size={30} style={{ color: "var(--accent)" }} /> : <Car size={30} style={{ color: "var(--accent)" }} />}
+        </div>
+        <h2 className="rg-display text-xl font-bold mb-1">{t.searching}</h2>
+        <p className="text-sm mb-1" style={{ color: "var(--muted)" }}>{params.pickup}</p>
+        {(params.fare || params.distanceKm) && (
+          <p className="text-xs font-semibold rg-mono mb-6" style={{ color: "var(--accent)" }}>
+            {params.distanceKm ? `${Number(params.distanceKm).toFixed(1)} km` : ""}{params.fare ? ` · ₹${params.fare}` : ""}
+          </p>
+        )}
+        <button
+          onClick={() => { if (params.rideId) cancelRide(params.rideId, "passenger").catch(console.error); go("home"); }}
+          className="text-sm font-semibold px-5 py-2.5 rounded-full"
+          style={{ color: "var(--red)", background: "var(--surface-2)" }}
+        >
+          {t.cancelRide}
+        </button>
       </div>
-      <h2 className="rg-display text-xl font-bold mb-1">{t.searching}</h2>
-      <p className="text-sm mb-6" style={{ color: "var(--muted)" }}>{params.pickup}</p>
-      <button
-        onClick={() => { if (params.rideId) cancelRide(params.rideId, "passenger").catch(console.error); go("home"); }}
-        className="text-sm font-semibold px-5 py-2.5 rounded-full"
-        style={{ color: "var(--red)", background: "var(--surface-2)" }}
-      >
-        {t.cancelRide}
-      </button>
     </div>
   );
 }
@@ -1030,6 +1046,31 @@ async function getRoute(pickupPt, dropPt) {
     console.error("OSRM routing failed:", e);
     return null;
   }
+}
+
+/* ------------------------------------------------------------------ */
+/*  Live driver distance/ETA — straight-line (haversine) distance      */
+/*  between the driver's real live GPS point and a target point.       */
+/*  Used for the continuously-updating "Driver is X km away" indicator */
+/*  because re-calling OSRM on every 3s location update would hit the  */
+/*  public demo server's rate limits. This is real, live-computed      */
+/*  distance from real coordinates — not a fake or hardcoded value —   */
+/*  just straight-line rather than road-distance.                     */
+/* ------------------------------------------------------------------ */
+const AVG_CITY_SPEED_KMPH = 22;
+function haversineKm(a, b) {
+  if (!a || !b || a[0] == null || b[0] == null) return null;
+  const R = 6371;
+  const dLat = ((b[0] - a[0]) * Math.PI) / 180;
+  const dLng = ((b[1] - a[1]) * Math.PI) / 180;
+  const s =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((a[0] * Math.PI) / 180) * Math.cos((b[0] * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(s), Math.sqrt(1 - s));
+}
+function etaMinutesFor(distanceKm) {
+  if (distanceKm == null) return null;
+  return Math.max(1, Math.round((distanceKm / AVG_CITY_SPEED_KMPH) * 60));
 }
 
 function TrackingMap({ height = 190, pickup, drop, driverLocation }) {
@@ -1108,10 +1149,22 @@ function PTrackingScreen({ go, params }) {
   const [arrived, setArrived] = useState(false);
   const [showFare, setShowFare] = useState(false);
   const [liveDriverLocation, setLiveDriverLocation] = useState(null);
+  const [pickupPt, setPickupPt] = useState(null);
   const fare = params.fare || fareFor(vehicle);
   const speakGuide = useVoiceGuide();
   const spokenArrived = useRef(false);
   const spokenOnTrip = useRef(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    geocodeAddress(params.pickup).then((p) => { if (!cancelled && p) setPickupPt(p); });
+    return () => { cancelled = true; };
+  }, [params.pickup]);
+
+  const driverAwayKm = liveDriverLocation?.lat != null
+    ? haversineKm(pickupPt, [liveDriverLocation.lat, liveDriverLocation.lng])
+    : null;
+  const driverAwayEta = etaMinutesFor(driverAwayKm);
 
   useEffect(() => {
     speakGuide(t.driverOnWayVoice);
@@ -1145,6 +1198,24 @@ function PTrackingScreen({ go, params }) {
     return () => { clearTimeout(id1); clearTimeout(id2); };
   }, []);
 
+  const shareLiveLocation = async () => {
+    const loc = liveDriverLocation?.lat != null ? liveDriverLocation : null;
+    const mapsUrl = loc
+      ? `https://maps.google.com/?q=${loc.lat},${loc.lng}`
+      : `https://maps.google.com/?q=${encodeURIComponent(params.pickup)}`;
+    const shareText = `Track my RideGo trip: ${params.pickup} → ${params.drop}\n${mapsUrl}`;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: "My RideGo trip", text: shareText, url: mapsUrl });
+      } else if (navigator.clipboard) {
+        await navigator.clipboard.writeText(shareText);
+        alert("Trip link copied — paste it to share with someone.");
+      }
+    } catch (e) {
+      if (e?.name !== "AbortError") console.error("Share failed:", e);
+    }
+  };
+
   return (
     <div className="flex flex-col h-full rg-anim-in relative">
       <div className="flex items-center justify-between px-5 pt-5 pb-3 shrink-0">
@@ -1157,7 +1228,13 @@ function PTrackingScreen({ go, params }) {
         <div className="rounded-2xl p-4 mb-3 flex items-center justify-between" style={{ background: "var(--accent-grad)" }}>
           <div>
             <p className="text-white font-semibold text-sm">{arrived ? t.driverArrivedVoice : t.driverOnWay}</p>
-            {!arrived && <p className="text-xs" style={{ color: "rgba(255,255,255,0.9)" }}>{t.arrivingIn} {vehicle.eta} {t.minutes}</p>}
+            {!arrived && (
+              <p className="text-xs" style={{ color: "rgba(255,255,255,0.9)" }}>
+                {driverAwayKm != null
+                  ? `${driverAwayKm.toFixed(1)} km away${driverAwayEta ? ` · Arrives in ${driverAwayEta} min` : ""}`
+                  : `${t.arrivingIn} ${vehicle.eta} ${t.minutes}`}
+              </p>
+            )}
           </div>
           <CarIcon size={26} color="#fff" />
         </div>
@@ -1166,7 +1243,7 @@ function PTrackingScreen({ go, params }) {
       <div className="px-5"><TrackingMap pickup={params.pickup} drop={params.drop} driverLocation={liveDriverLocation} /></div>
 
       <div className="flex-1 overflow-y-auto rg-scroll px-5 pt-3">
-        <button className="w-full flex items-center justify-center gap-2 rounded-2xl py-2.5 mb-3 text-xs font-semibold" style={{ background: "var(--surface-2)", color: "var(--accent-dark)" }}>
+        <button onClick={shareLiveLocation} className="w-full flex items-center justify-center gap-2 rounded-2xl py-2.5 mb-3 text-xs font-semibold" style={{ background: "var(--surface-2)", color: "var(--accent-dark)" }}>
           <Share2 size={13} /> {t.shareLiveLocation}
         </button>
 
@@ -1176,7 +1253,10 @@ function PTrackingScreen({ go, params }) {
           </div>
           <div className="flex-1">
             <p className="font-semibold text-[15px]">{driver?.name || "Driver"}</p>
-            <p className="text-xs flex items-center gap-1" style={{ color: "var(--muted)" }}><Star size={11} fill="var(--amber)" color="var(--amber)" /> {driver?.rating || "—"} · {driver?.plate || ""}</p>
+            <p className="text-xs flex items-center gap-1" style={{ color: "var(--muted)" }}>
+              <Star size={11} fill="var(--amber)" color="var(--amber)" /> {driver?.rating || "—"}
+              {driver?.vehicleName ? ` · ${driver.vehicleName}` : ""} · {driver?.plate || ""}
+            </p>
           </div>
           <div className="flex gap-2">
             <a href={`tel:${(driver.mobile || "").replace(/\s/g, "")}`} className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: "var(--accent-grad)" }}><Phone size={15} color="#fff" /></a>
@@ -1214,10 +1294,45 @@ function PInTripScreen({ go, params }) {
   const { addRide } = useApp();
   const [stars, setStars] = useState(5);
   const [payment] = useState(params.payment || "cash");
+  const [tripCompleted, setTripCompleted] = useState(false);
+  const [liveDriverLocation, setLiveDriverLocation] = useState(null);
+  const [dropPt, setDropPt] = useState(null);
   const speakGuide = useVoiceGuide();
+  const spokenComplete = useRef(false);
   const tripId = useRef(`RG${Date.now().toString().slice(-8)}`).current;
   const fare = params.fare || fareFor(params.vehicle);
-  useEffect(() => { speakGuide(`${t.tripCompletedVoice} ${t.paymentSuccessVoice}`); }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    geocodeAddress(params.drop).then((p) => { if (!cancelled && p) setDropPt(p); });
+    return () => { cancelled = true; };
+  }, [params.drop]);
+
+  useEffect(() => {
+    if (params.rideId) {
+      const unsub = watchRide(params.rideId, (data) => {
+        try {
+          if (!data) return;
+          if (data.driverLocation) setLiveDriverLocation(data.driverLocation);
+          if (data.status === "completed" && !spokenComplete.current) {
+            spokenComplete.current = true;
+            setTripCompleted(true);
+            speakGuide(`${t.tripCompletedVoice} ${t.paymentSuccessVoice}`);
+          }
+        } catch (err) { console.error("watchRide callback error:", err); }
+      });
+      return () => unsub();
+    }
+    const id = setTimeout(() => {
+      spokenComplete.current = true;
+      setTripCompleted(true);
+      speakGuide(`${t.tripCompletedVoice} ${t.paymentSuccessVoice}`);
+    }, 7000);
+    return () => clearTimeout(id);
+  }, []);
+
+  const remainingKm = liveDriverLocation?.lat != null ? haversineKm(dropPt, [liveDriverLocation.lat, liveDriverLocation.lng]) : null;
+  const remainingEta = etaMinutesFor(remainingKm);
 
   const finish = () => {
     addRide({ id: Date.now(), from: params.pickup, to: params.drop, vehicle: params.vehicle, driver: params.driver, fare, date: new Date(), rating: stars });
@@ -1243,6 +1358,69 @@ function PInTripScreen({ go, params }) {
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
+
+  if (!tripCompleted) {
+    return (
+      <div className="flex flex-col h-full rg-anim-in">
+        <div className="flex items-center justify-between px-5 pt-5 pb-3 shrink-0">
+          <button className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: "var(--surface-2)" }}><ChevronLeft size={18} /></button>
+          <h1 className="rg-display text-lg font-bold" style={{ color: "var(--accent)" }}>{t.appName}</h1>
+          <span className="text-xs font-bold" style={{ color: "var(--red)" }}>{t.sos}</span>
+        </div>
+
+        <div className="px-5">
+          <div className="rounded-2xl p-4 mb-3 flex items-center justify-between" style={{ background: "var(--accent-grad)" }}>
+            <div>
+              <p className="text-white font-semibold text-sm">{t.onTrip}</p>
+              <p className="text-xs" style={{ color: "rgba(255,255,255,0.9)" }}>
+                {remainingKm != null
+                  ? `${remainingKm.toFixed(1)} km remaining${remainingEta ? ` · ${remainingEta} min to destination` : ""}`
+                  : t.enjoyRide}
+              </p>
+            </div>
+            <CarIcon size={26} color="#fff" />
+          </div>
+        </div>
+
+        <div className="px-5"><TrackingMap pickup={params.pickup} drop={params.drop} driverLocation={liveDriverLocation} /></div>
+
+        <div className="flex-1 overflow-y-auto rg-scroll px-5 pt-3">
+          <div className="flex items-center gap-3 rounded-2xl p-4 mb-3 rg-card">
+            <div className="w-11 h-11 rounded-full overflow-hidden flex items-center justify-center rg-display font-bold shrink-0" style={{ background: "var(--accent-grad)", color: "#fff" }}>
+              {params.driver?.photo ? <img src={params.driver.photo} className="w-full h-full object-cover" alt="" /> : (params.driver?.name?.[0] || "D")}
+            </div>
+            <div className="flex-1">
+              <p className="font-semibold text-sm">{params.driver?.name || "Driver"}</p>
+              <p className="text-xs flex items-center gap-1" style={{ color: "var(--muted)" }}>
+                <Star size={11} fill="var(--amber)" color="var(--amber)" /> {params.driver?.rating || "—"}
+                {params.driver?.vehicleName ? ` · ${params.driver.vehicleName}` : ""} · {params.driver?.plate || ""}
+              </p>
+            </div>
+            <a href={`tel:${(params.driver?.mobile || "").replace(/\s/g, "")}`} className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: "var(--accent-grad)" }}><Phone size={15} color="#fff" /></a>
+          </div>
+
+          <div className="rounded-2xl p-4 mb-3 rg-card">
+            <div className="flex items-start gap-2.5 pb-2">
+              <div className="w-2.5 h-2.5 rounded-full mt-1 shrink-0" style={{ background: "var(--accent)" }} />
+              <p className="text-xs font-semibold flex-1">{params.pickup}</p>
+            </div>
+            <div className="flex items-start gap-2.5 pt-2" style={{ borderTop: "1px dashed var(--border)" }}>
+              <div className="w-2.5 h-2.5 rounded-full mt-1 shrink-0" style={{ background: "var(--red)" }} />
+              <p className="text-xs font-semibold flex-1">{params.drop}</p>
+              <p className="text-[11px] text-right shrink-0" style={{ color: "var(--muted)" }}>{(params.distanceKm || DISTANCE_KM).toFixed(1)} km total</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="px-5 pb-6 pt-2 shrink-0">
+          <div className="rounded-2xl p-3.5 flex items-center justify-between" style={{ background: "var(--surface-2)" }}>
+            <span className="text-xs" style={{ color: "var(--muted)" }}>{t.totalFare}</span>
+            <span className="font-bold text-sm">₹{fare} <span className="font-normal capitalize" style={{ color: "var(--muted)" }}>· {payment}</span></span>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-full rg-anim-in">
@@ -1700,6 +1878,7 @@ function DHomeScreen() {
         await acceptRide(request.id, {
           name: driver?.name, plate: driver?.plate, rating: driver?.rating,
           mobile: driver?.mobile, photo: driver?.photo || null,
+          vehicleName: driver?.vehicleType?.name || "",
         });
       } catch (e) {
         alert(e?.message || "Could not accept this ride — it may have just been taken by another driver.");
@@ -2215,7 +2394,7 @@ export default function RideGo() {
 
 
 
-            
+                                              
 
     
  
