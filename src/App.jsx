@@ -1,4 +1,3 @@
- 
 import React, { useState, useEffect, useRef, createContext, useContext, useCallback, memo } from "react";
 import { BarChart, Bar, XAxis, ResponsiveContainer, Tooltip, CartesianGrid } from "recharts";
 import { MapContainer, TileLayer, Marker, Polyline } from "react-leaflet";
@@ -7,6 +6,7 @@ import { TextToSpeech } from "@capacitor-community/text-to-speech";
 import { Capacitor } from "@capacitor/core";
 import { PushNotifications } from "@capacitor/push-notifications";
 import { Preferences } from "@capacitor/preferences";
+import { Geolocation } from "@capacitor/geolocation";
 import {
   createRideRequest,
   watchRide,
@@ -427,12 +427,19 @@ const RouteVisual = memo(function RouteVisual({ height = 150, compact }) {
   const mapHeight = compact ? 130 : height;
 
   useEffect(() => {
-    if (!navigator.geolocation) { setLocError(true); return; }
-    navigator.geolocation.getCurrentPosition(
-      (pos) => setCoords([pos.coords.latitude, pos.coords.longitude]),
-      () => setLocError(true),
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
+    let cancelled = false;
+    (async () => {
+      try {
+        const ok = await ensureLocationPermission();
+        if (!ok) { if (!cancelled) setLocError(true); return; }
+        const pos = await Geolocation.getCurrentPosition({ enableHighAccuracy: true, timeout: 10000 });
+        if (!cancelled) setCoords([pos.coords.latitude, pos.coords.longitude]);
+      } catch (e) {
+        console.error("Geolocation failed:", e);
+        if (!cancelled) setLocError(true);
+      }
+    })();
+    return () => { cancelled = true; };
   }, []);
 
   const center = coords || FALLBACK_COORDS;
@@ -1081,12 +1088,19 @@ function TrackingMap({ height = 190, pickup, drop, driverLocation }) {
   const [routeCoords, setRouteCoords] = useState(null);
 
   useEffect(() => {
-    if (!navigator.geolocation) { setLocError(true); return; }
-    navigator.geolocation.getCurrentPosition(
-      (pos) => setCoords([pos.coords.latitude, pos.coords.longitude]),
-      () => setLocError(true),
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
+    let cancelled = false;
+    (async () => {
+      try {
+        const ok = await ensureLocationPermission();
+        if (!ok) { if (!cancelled) setLocError(true); return; }
+        const pos = await Geolocation.getCurrentPosition({ enableHighAccuracy: true, timeout: 10000 });
+        if (!cancelled) setCoords([pos.coords.latitude, pos.coords.longitude]);
+      } catch (e) {
+        console.error("Geolocation failed:", e);
+        if (!cancelled) setLocError(true);
+      }
+    })();
+    return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {
@@ -1842,13 +1856,21 @@ function DHomeScreen() {
 
   useEffect(() => {
     if (!activeTrip?.id) return;
-    const id = setInterval(() => {
-      if (!navigator.geolocation) return;
-      navigator.geolocation.getCurrentPosition((pos) => {
-        updateDriverLocation(activeTrip.id, pos.coords.latitude, pos.coords.longitude).catch(console.error);
-      });
-    }, 3000);
-    return () => clearInterval(id);
+    let cancelled = false;
+    let intervalId;
+    (async () => {
+      const ok = await ensureLocationPermission();
+      if (!ok || cancelled) return;
+      intervalId = setInterval(async () => {
+        try {
+          const pos = await Geolocation.getCurrentPosition({ enableHighAccuracy: true, timeout: 8000 });
+          updateDriverLocation(activeTrip.id, pos.coords.latitude, pos.coords.longitude).catch(console.error);
+        } catch (e) {
+          console.error("Could not get driver location:", e);
+        }
+      }, 3000);
+    })();
+    return () => { cancelled = true; if (intervalId) clearInterval(intervalId); };
   }, [activeTrip]);
 
   useEffect(() => {
@@ -2284,6 +2306,25 @@ async function clearSession() {
   }
 }
 
+/* ------------------------------------------------------------------ */
+/*  Device location — uses the native Capacitor Geolocation plugin,    */
+/*  NOT the raw browser navigator.geolocation API. This is required    */
+/*  for Android to register the location permission at all (so it     */
+/*  shows up under Settings > Apps > RideGo > Permissions) and for     */
+/*  the runtime permission prompt to actually appear.                  */
+/* ------------------------------------------------------------------ */
+async function ensureLocationPermission() {
+  try {
+    const status = await Geolocation.checkPermissions();
+    if (status.location === "granted" || status.location === "limited") return true;
+    const req = await Geolocation.requestPermissions();
+    return req.location === "granted" || req.location === "limited";
+  } catch (e) {
+    console.error("Location permission check failed:", e);
+    return false;
+  }
+}
+
 export default function RideGo() {
   const [theme, setTheme] = useState("light");
   const [lang, setLang] = useState("en");
@@ -2394,10 +2435,6 @@ export default function RideGo() {
 
 
 
-                                              
 
-    
- 
-
-
-          
+      
+            
