@@ -1,4 +1,3 @@
-
 import { initializeApp } from "firebase/app";
 import { FirebaseAuthentication } from "@capacitor-firebase/authentication";
 import {
@@ -233,6 +232,7 @@ export async function acceptRide(rideId, driverInfo) {
     tx.update(rideRef, {
       status: "accepted", driverName: driverInfo.name, driverPlate: driverInfo.plate,
       driverRating: driverInfo.rating, driverMobile: driverInfo.mobile, driverPhoto: driverInfo.photo || null,
+      driverVehicleName: driverInfo.vehicleName || null,
     });
   });
   notifyPassenger(rideId, "Driver Accepted", `${driverInfo.name || "Your driver"} is on the way!`);
@@ -267,3 +267,5 @@ export async function updateDriverLocation(rideId, lat, lng) {
     },
   });
 }
+
+         
