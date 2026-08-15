@@ -97,19 +97,34 @@ export async function getDriver(mobile10Digit) {
 
 // Low-level: send one push to one FCM token via the Cloudflare Worker.
 // Never throws — a failed/missing push should never break a ride action.
+// Retries once on a transient (5xx/network) failure, and reports back
+// whether the token itself looks dead (so callers can clean it up).
 export async function sendPushNotification(token, title, message) {
-  if (!token) return;
-  try {
-    const res = await fetch(FCM_WORKER_URL, {
+  if (!token) return { ok: false, invalidToken: false };
+  const attempt = () =>
+    fetch(FCM_WORKER_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ token, title, body: message }),
     });
-    if (!res.ok) {
-      console.error("sendPushNotification failed:", res.status, await res.text().catch(() => ""));
+  try {
+    let res = await attempt();
+    if (!res.ok && res.status >= 500) {
+      await new Promise((r) => setTimeout(r, 1200));
+      res = await attempt();
     }
+    if (res.ok) return { ok: true, invalidToken: false };
+
+    const bodyText = await res.text().catch(() => "");
+    const invalidToken =
+      res.status === 404 ||
+      res.status === 400 ||
+      /unregistered|invalid.?registration|not.?found/i.test(bodyText);
+    console.error("sendPushNotification failed:", res.status, bodyText);
+    return { ok: false, invalidToken };
   } catch (e) {
     console.error("sendPushNotification error:", e);
+    return { ok: false, invalidToken: false };
   }
 }
 
@@ -123,7 +138,11 @@ export async function notifyPassenger(rideId, title, message) {
     if (!mobile) return;
     const passenger = await getPassenger(mobile);
     if (!passenger?.fcmToken) return;
-    await sendPushNotification(passenger.fcmToken, title, message);
+    const result = await sendPushNotification(passenger.fcmToken, title, message);
+    if (result?.invalidToken) {
+      await savePassenger(mobile, { fcmToken: null }).catch(() => {});
+      console.warn(`Cleared stale FCM token for passenger ${mobile}`);
+    }
   } catch (e) {
     console.error("notifyPassenger failed:", e);
   }
@@ -139,7 +158,11 @@ export async function notifyDriver(rideId, title, message) {
     if (!driverMobile) return;
     const drv = await getDriver(driverMobile);
     if (!drv?.fcmToken) return;
-    await sendPushNotification(drv.fcmToken, title, message);
+    const result = await sendPushNotification(drv.fcmToken, title, message);
+    if (result?.invalidToken) {
+      await saveDriver(driverMobile, { fcmToken: null }).catch(() => {});
+      console.warn(`Cleared stale FCM token for driver ${driverMobile}`);
+    }
   } catch (e) {
     console.error("notifyDriver failed:", e);
   }
@@ -154,7 +177,14 @@ export async function notifyNearbyDrivers(title, message) {
     const sends = [];
     snap.forEach((d) => {
       const token = d.data()?.fcmToken;
-      if (token) sends.push(sendPushNotification(token, title, message));
+      if (!token) return;
+      sends.push(
+        sendPushNotification(token, title, message).then((result) => {
+          if (result?.invalidToken) {
+            return saveDriver(d.id, { fcmToken: null }).catch(() => {});
+          }
+        })
+      );
     });
     await Promise.all(sends);
   } catch (e) {
@@ -267,5 +297,3 @@ export async function updateDriverLocation(rideId, lat, lng) {
     },
   });
 }
-
-         
