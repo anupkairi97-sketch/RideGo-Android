@@ -370,6 +370,27 @@ function FontStyles() {
   );
 }
 
+/* ------------------------------ Brand mark ----------------------------- */
+// Custom RideGo logo: a road/path sweeping into a forward chevron — a
+// mobility + movement concept. Not a stock icon; used consistently
+// wherever the brand appears (splash/login, home, headers).
+const RideGoMark = memo(function RideGoMark({ size = 30, color = "#fff" }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="RideGo">
+      <path d="M6 33 C15 33, 16 25, 24 25 C32 25, 33 17, 42 17" stroke={color} strokeWidth="4.2" strokeLinecap="round" opacity="0.55" />
+      <circle cx="9" cy="33" r="3.4" fill={color} />
+      <path d="M42 17 L32.5 10.5 L32.5 15.5 L23 15.5 L23 18.5 L32.5 18.5 L32.5 23.5 Z" fill={color} />
+    </svg>
+  );
+});
+function RideGoWordmark({ className = "text-3xl", color }) {
+  return (
+    <span className={`rg-display font-bold ${className}`} style={{ color: color || "var(--ink)", letterSpacing: "-0.02em" }}>
+      Ride<span style={{ color: "var(--accent)" }}>Go</span>
+    </span>
+  );
+}
+
 /* ------------------------------ Primitives ----------------------------- */
 const Btn = memo(function Btn({ children, variant = "primary", className = "", ...props }) {
   const base = "w-full rounded-2xl py-3.5 font-semibold text-[15px] transition-transform active:scale-[0.97] flex items-center justify-center gap-2 disabled:opacity-50 disabled:active:scale-100";
@@ -556,9 +577,9 @@ function RoleSelect() {
     <div className="flex flex-col h-full px-6 rg-anim-in justify-center gap-5">
       <div className="text-center flex flex-col items-center gap-3 mb-2">
         <div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{ background: ACCENTS.brand.grad, boxShadow: "0 14px 30px -10px rgba(15,139,76,0.55)" }}>
-          <Navigation2 size={30} color="#fff" />
+          <RideGoMark size={30} />
         </div>
-        <h1 className="rg-display text-3xl font-bold">RideGo</h1>
+        <RideGoWordmark />
         <p style={{ color: "var(--muted)" }} className="text-[15px]">How do you want to use RideGo?</p>
       </div>
       <button onClick={() => setRole("passenger")} className="flex items-center gap-4 rounded-3xl p-5 text-left rg-card" style={{ borderColor: ACCENTS.passenger.c, borderWidth: 1.5 }}>
@@ -625,9 +646,9 @@ function PLoginScreen({ go }) {
       <TopBar onBack={() => setRole(null)} />
       <div className="flex-1 flex flex-col justify-center items-center text-center gap-3 -mt-10">
         <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-2" style={{ background: "var(--accent-grad)", boxShadow: "0 14px 30px -10px var(--accent)" }}>
-          <Navigation2 size={30} color="#fff" />
+          <RideGoMark size={30} />
         </div>
-        <h1 className="rg-display text-3xl font-bold">{t.appName}</h1>
+        <RideGoWordmark />
         <p style={{ color: "var(--muted)" }} className="text-[15px]">{t.tagline}</p>
       </div>
       <div className="pb-8 flex flex-col gap-3">
@@ -730,20 +751,25 @@ function PHomeScreen({ go }) {
   const { user } = useApp();
   const [pickup, setPickup] = useState("Pailapool, Silchar");
   const [drop, setDrop] = useState("Hayat Hospital, Guwahati");
+  const [showAbout, setShowAbout] = useState(false);
   const speakGuide = useVoiceGuide();
   useEffect(() => { speakGuide(t.homeVoice); }, []);
   const firstName = (user?.name || "Rider").split(" ")[0];
 
   return (
-    <div className="flex flex-col h-full rg-anim-in">
+    <div className="flex flex-col h-full rg-anim-in relative">
       <div className="px-5 pt-5 pb-2 flex items-center justify-between shrink-0">
-        <Menu size={22} />
-        <h1 className="rg-display text-lg font-bold" style={{ color: "var(--accent)" }}>{t.appName}</h1>
+        <button onClick={() => setShowAbout(true)} aria-label="Menu"><Menu size={22} /></button>
+        <div className="flex items-center gap-1.5">
+          <div className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0" style={{ background: "var(--accent-grad)" }}><RideGoMark size={14} /></div>
+          <RideGoWordmark className="text-lg" />
+        </div>
         <Bell size={20} />
       </div>
+      {showAbout && <AboutSheet onClose={() => setShowAbout(false)} />}
 
       <div className="flex-1 overflow-y-auto rg-scroll px-5 pt-2 pb-4">
-        <div className="rounded-2xl p-4 mb-4 flex items-center gap-3" style={{ background: "var(--accent-grad)" }}>
+        <div className="rounded-2xl p-4 mb-4 flex items-center gap-3" style={{ background: "var(--accent-grad)", boxShadow: "0 16px 32px -14px var(--accent)" }}>
           <div className="flex-1">
             <p className="text-white font-semibold text-[15px]">{t.hello}, {firstName} 👋</p>
             <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.9)" }}>{t.whereGoingToday}</p>
@@ -982,6 +1008,154 @@ function PSearchingScreen({ go, params }) {
   );
 }
 
+/* ------------------------------------------------------------------ */
+/*  Legal content — GENERIC PLACEHOLDER TEXT.                          */
+/*  Replace company name/contact/address/jurisdiction with your real   */
+/*  registered business details before publishing this app publicly.  */
+/* ------------------------------------------------------------------ */
+const LEGAL_DOCS = {
+  privacy: {
+    title: "Privacy Policy",
+    body: `[PLACEHOLDER — replace with your registered business details before publishing]
+
+Last updated: [date]
+
+RideGo ("we", "us", "our") operates the RideGo mobile application. This policy explains what information we collect and how we use it.
+
+1. Information we collect
+- Account details: name, mobile number, email (optional), profile photo.
+- Location data: pickup/drop addresses you enter, and live GPS location while a ride is active (for drivers, while online or on a trip).
+- Ride data: trip history, fare, payment method selected, ratings.
+- Device data: push notification token, for sending ride updates.
+
+2. How we use it
+- To match passengers with nearby drivers and provide the ride service.
+- To send ride-status notifications (booking, accept, arrival, trip start/end).
+- To calculate fares and distances.
+- To improve safety (SOS/emergency features) and resolve disputes.
+
+3. Sharing
+- Your name, photo, rating, and live location are shared with the other party (driver/passenger) only for the duration of an active ride.
+- We do not sell your personal data to third parties.
+- We may share data if required by law.
+
+4. Data retention
+- Ride history and account data are retained as long as your account is active, or as required by applicable law.
+
+5. Your rights
+- You may request access to, correction of, or deletion of your data by contacting us at [support email].
+
+6. Contact
+[Company legal name — to be added]
+[Registered address — to be added]
+[Support email/phone — to be added]`,
+  },
+  terms: {
+    title: "Terms of Service",
+    body: `[PLACEHOLDER — replace with your registered business details before publishing]
+
+Last updated: [date]
+
+By creating an account or using RideGo, you agree to these terms.
+
+1. The service
+RideGo is a platform that connects passengers seeking rides with independent drivers. RideGo is not a transportation carrier; drivers are independent and responsible for complying with local transport regulations.
+
+2. Eligibility
+You must be at least 18 years old (or the age of majority in your region) to create an account.
+
+3. Account responsibility
+You are responsible for the accuracy of the information you provide and for keeping your account secure.
+
+4. Fares and payment
+Estimated fares are calculated from real-time distance/route data and may vary from the final fare based on actual route taken, wait time, or ride changes. Payment methods shown in the app apply as selected at booking.
+
+5. Conduct
+Passengers and drivers agree to treat each other respectfully. Harassment, unsafe driving, or fraudulent activity may result in account suspension.
+
+6. Cancellations
+See our separate Refund & Cancellation Policy.
+
+7. Liability
+RideGo facilitates the connection between passengers and drivers. To the maximum extent permitted by law, RideGo is not liable for the conduct of drivers or passengers, or for delays outside its reasonable control.
+
+8. Changes
+We may update these terms from time to time; continued use of the app means you accept the updated terms.
+
+9. Contact
+[Company legal name — to be added]
+[Registered address — to be added]
+[Support email/phone — to be added]`,
+  },
+  refund: {
+    title: "Refund & Cancellation Policy",
+    body: `[PLACEHOLDER — replace with your registered business details before publishing]
+
+Last updated: [date]
+
+1. Passenger cancellations
+- Cancelling before a driver accepts: no charge.
+- Cancelling after a driver has accepted and is on the way: a cancellation fee may apply, depending on how far the driver has already travelled toward pickup.
+
+2. Driver cancellations
+- If a driver cancels after accepting, the passenger is not charged and may re-book immediately at no extra cost.
+
+3. Fare disputes
+- If you believe you were charged incorrectly, contact support within [X] days of the trip with your trip ID.
+
+4. Refund method
+- Approved refunds are issued to the original payment method (or as wallet credit, where applicable) within [X] business days.
+
+5. Contact
+[Company legal name — to be added]
+[Registered address — to be added]
+[Support email/phone — to be added]`,
+  },
+};
+
+function AboutSheet({ onClose }) {
+  const [doc, setDoc] = useState(null);
+
+  if (doc) {
+    const d = LEGAL_DOCS[doc];
+    return (
+      <div className="absolute inset-0 z-30 flex flex-col rg-anim-in" style={{ background: "var(--bg)" }}>
+        <TopBar title={d.title} onBack={() => setDoc(null)} />
+        <div className="flex-1 overflow-y-auto rg-scroll px-5 pb-10 text-sm whitespace-pre-wrap leading-relaxed" style={{ color: "var(--muted)" }}>
+          {d.body}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="absolute inset-0 flex items-end z-30" style={{ background: "rgba(0,0,0,0.45)" }} onClick={onClose}>
+      <div className="w-full rounded-t-3xl p-6 rg-anim-in" style={{ background: "var(--surface)" }} onClick={(e) => e.stopPropagation()}>
+        <div className="flex flex-col items-center text-center gap-2 mb-5">
+          <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ background: "var(--accent-grad)" }}><RideGoMark size={26} /></div>
+          <RideGoWordmark className="text-xl" />
+          <p className="text-xs" style={{ color: "var(--muted)" }}>Version 1.0.0</p>
+        </div>
+        <p className="text-sm text-center mb-5" style={{ color: "var(--muted)" }}>
+          RideGo connects riders with nearby drivers for fast, affordable, everyday travel.
+        </p>
+        <div className="flex flex-col gap-1">
+          <button onClick={() => setDoc("privacy")} className="w-full flex items-center justify-between py-3.5" style={{ borderBottom: "1px solid var(--border)" }}>
+            <span className="text-sm font-medium">Privacy Policy</span><ChevronRight size={16} style={{ color: "var(--muted)" }} />
+          </button>
+          <button onClick={() => setDoc("terms")} className="w-full flex items-center justify-between py-3.5" style={{ borderBottom: "1px solid var(--border)" }}>
+            <span className="text-sm font-medium">Terms of Service</span><ChevronRight size={16} style={{ color: "var(--muted)" }} />
+          </button>
+          <button onClick={() => setDoc("refund")} className="w-full flex items-center justify-between py-3.5">
+            <span className="text-sm font-medium">Refund &amp; Cancellation Policy</span><ChevronRight size={16} style={{ color: "var(--muted)" }} />
+          </button>
+        </div>
+        <button onClick={onClose} className="w-full text-center text-sm font-semibold py-3.5 mt-2" style={{ color: "var(--muted)" }}>Close</button>
+      </div>
+    </div>
+  );
+}
+
 function SOSSheet({ onClose }) {
   const t = useT();
   const [sosSent, setSosSent] = useState(false);
@@ -1078,6 +1252,19 @@ function haversineKm(a, b) {
 function etaMinutesFor(distanceKm) {
   if (distanceKm == null) return null;
   return Math.max(1, Math.round((distanceKm / AVG_CITY_SPEED_KMPH) * 60));
+}
+// Rapido-style close-range formatting: metres when < 1km, else km.
+function formatDistance(km) {
+  if (km == null) return null;
+  if (km < 1) return `${Math.max(0, Math.round(km * 1000))} m`;
+  return `${km.toFixed(1)} km`;
+}
+function formatDuration(min) {
+  if (min == null) return null;
+  if (min < 60) return `${min} min`;
+  const h = Math.floor(min / 60);
+  const m = Math.round(min % 60);
+  return `${h}h ${m}m`;
 }
 
 function TrackingMap({ height = 190, pickup, drop, driverLocation }) {
@@ -1243,9 +1430,10 @@ function PTrackingScreen({ go, params }) {
           <div>
             <p className="text-white font-semibold text-sm">{arrived ? t.driverArrivedVoice : t.driverOnWay}</p>
             {!arrived && (
-              <p className="text-xs" style={{ color: "rgba(255,255,255,0.9)" }}>
+              <p className="text-xs flex items-center gap-1.5" style={{ color: "rgba(255,255,255,0.9)" }}>
+                <span className="inline-block w-1.5 h-1.5 rounded-full" style={{ background: driverAwayKm != null ? "#4ADE80" : "rgba(255,255,255,0.6)" }} />
                 {driverAwayKm != null
-                  ? `${driverAwayKm.toFixed(1)} km away${driverAwayEta ? ` · Arrives in ${driverAwayEta} min` : ""}`
+                  ? `${formatDistance(driverAwayKm)} away${driverAwayEta ? ` · Arriving in ${driverAwayEta} min` : ""}`
                   : `${t.arrivingIn} ${vehicle.eta} ${t.minutes}`}
               </p>
             )}
@@ -1386,9 +1574,10 @@ function PInTripScreen({ go, params }) {
           <div className="rounded-2xl p-4 mb-3 flex items-center justify-between" style={{ background: "var(--accent-grad)" }}>
             <div>
               <p className="text-white font-semibold text-sm">{t.onTrip}</p>
-              <p className="text-xs" style={{ color: "rgba(255,255,255,0.9)" }}>
+              <p className="text-xs flex items-center gap-1.5" style={{ color: "rgba(255,255,255,0.9)" }}>
+                <span className="inline-block w-1.5 h-1.5 rounded-full" style={{ background: remainingKm != null ? "#4ADE80" : "rgba(255,255,255,0.6)" }} />
                 {remainingKm != null
-                  ? `${remainingKm.toFixed(1)} km remaining${remainingEta ? ` · ${remainingEta} min to destination` : ""}`
+                  ? `${formatDistance(remainingKm)} remaining${remainingEta ? ` · ${formatDuration(remainingEta)} to destination` : ""}`
                   : t.enjoyRide}
               </p>
             </div>
@@ -1694,8 +1883,8 @@ function DLoginScreen({ go }) {
     <div className="flex flex-col h-full px-6 rg-anim-in">
       <TopBar onBack={() => setRole(null)} />
       <div className="flex-1 flex flex-col justify-center items-center text-center gap-3 -mt-10">
-        <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-2" style={{ background: "var(--accent-grad)", boxShadow: "0 14px 30px -10px var(--accent)" }}><Navigation2 size={30} color="#fff" /></div>
-        <h1 className="rg-display text-3xl font-bold">RideGo Driver</h1>
+        <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-2" style={{ background: "var(--accent-grad)", boxShadow: "0 14px 30px -10px var(--accent)" }}><RideGoMark size={30} /></div>
+        <div className="flex items-center gap-1.5"><RideGoWordmark className="text-2xl" /><span className="rg-display text-2xl font-bold" style={{ color: "var(--muted)" }}>Driver</span></div>
         <p style={{ color: "var(--muted)" }} className="text-[15px]">Earn on your own schedule.</p>
       </div>
       <div className="pb-8 flex flex-col gap-3">
@@ -2435,6 +2624,12 @@ export default function RideGo() {
 
 
 
-
+    
+        
       
-            
+                        
+
+    
+
+
+
