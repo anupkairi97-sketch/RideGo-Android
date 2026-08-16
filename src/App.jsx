@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, createContext, useContext, useCallback, memo } from "react";
+    import React, { useState, useEffect, useRef, createContext, useContext, useCallback, memo } from "react";
 import { BarChart, Bar, XAxis, ResponsiveContainer, Tooltip, CartesianGrid } from "recharts";
 import { MapContainer, TileLayer, Marker, Polyline } from "react-leaflet";
 import L from "leaflet";
@@ -7,6 +7,7 @@ import { Capacitor } from "@capacitor/core";
 import { PushNotifications } from "@capacitor/push-notifications";
 import { Preferences } from "@capacitor/preferences";
 import { Geolocation } from "@capacitor/geolocation";
+import AdminApp from "./AdminPanel";
 import {
   createRideRequest,
   watchRide,
@@ -573,10 +574,26 @@ class ErrorBoundary extends React.Component {
 
 function RoleSelect() {
   const { setRole } = useApp();
+  const [showAdmin, setShowAdmin] = useState(false);
+  const pressTimer = useRef(null);
+  const startPress = () => {
+    pressTimer.current = setTimeout(() => setShowAdmin(true), 5000);
+  };
+  const cancelPress = () => {
+    if (pressTimer.current) { clearTimeout(pressTimer.current); pressTimer.current = null; }
+  };
+
+  if (showAdmin) return <AdminApp />;
+
   return (
     <div className="flex flex-col h-full px-6 rg-anim-in justify-center gap-5">
       <div className="text-center flex flex-col items-center gap-3 mb-2">
-        <div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{ background: ACCENTS.brand.grad, boxShadow: "0 14px 30px -10px rgba(15,139,76,0.55)" }}>
+        <div
+          onTouchStart={startPress} onTouchEnd={cancelPress} onTouchCancel={cancelPress}
+          onMouseDown={startPress} onMouseUp={cancelPress} onMouseLeave={cancelPress}
+          className="w-16 h-16 rounded-2xl flex items-center justify-center select-none"
+          style={{ background: ACCENTS.brand.grad, boxShadow: "0 14px 30px -10px rgba(15,139,76,0.55)" }}
+        >
           <RideGoMark size={30} />
         </div>
         <RideGoWordmark />
@@ -2624,12 +2641,6 @@ export default function RideGo() {
 
 
 
-    
-        
-      
-                        
+                             
 
-    
-
-
-
+                
