@@ -1,10 +1,10 @@
-import React, { useState, useEffect, createContext, useContext, memo } from "react";
+   import React, { useState, useEffect, createContext, useContext, memo } from "react";
 import { db } from "./firebase";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "firebase/auth";
-import { collection, onSnapshot } from "firebase/firestore";
+import { collection, onSnapshot, query, orderBy, limit } from "firebase/firestore";
 import {
   ShieldCheck, Mail, Lock, LogOut, Users, Car, Navigation2,
-  Loader2, TrendingUp, RefreshCw,
+  Loader2, TrendingUp, RefreshCw, ArrowLeft, Star, MapPin,
 } from "lucide-react";
 
 /* ------------------------------------------------------------------ */
@@ -109,9 +109,9 @@ function AdminLoginScreen() {
 }
 
 /* ------------------------------ Stat Card ------------------------------ */
-function StatCard({ icon: Icon, label, value, loading }) {
+function StatCard({ icon: Icon, label, value, loading, onClick }) {
   return (
-    <div className="rg-card rounded-2xl p-4 flex flex-col gap-3">
+    <button onClick={onClick} className="rg-card rounded-2xl p-4 flex flex-col gap-3 text-left transition-transform active:scale-[0.97]">
       <div className="w-11 h-11 rounded-xl flex items-center justify-center" style={{ background: "var(--accent-tint)" }}>
         <Icon size={20} style={{ color: "var(--accent)" }} />
       </div>
@@ -121,6 +121,158 @@ function StatCard({ icon: Icon, label, value, loading }) {
           {loading ? <Loader2 size={20} className="animate-spin" style={{ color: "var(--muted)" }} /> : value}
         </p>
       </div>
+    </button>
+  );
+}
+
+/* ------------------------------ Detail List screens ------------------------------ */
+function ListHeader({ title, count, onBack }) {
+  return (
+    <div className="px-5 pt-5 pb-3 flex items-center gap-3 shrink-0">
+      <button onClick={onBack} aria-label="Back" className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ background: "var(--surface-2)" }}>
+        <ArrowLeft size={17} />
+      </button>
+      <div className="flex-1">
+        <h1 className="rg-display text-lg font-bold">{title}</h1>
+        <p className="text-xs" style={{ color: "var(--muted)" }}>{count == null ? "Loading…" : `${count} total`}</p>
+      </div>
+    </div>
+  );
+}
+
+function EmptyState({ label }) {
+  return <p className="text-sm text-center py-10" style={{ color: "var(--muted)" }}>No {label} yet.</p>;
+}
+
+function PassengersListScreen({ onBack }) {
+  const [items, setItems] = useState(null);
+  useEffect(() => {
+    const unsub = onSnapshot(
+      collection(db, COLLECTIONS.passengers),
+      (snap) => setItems(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+      (err) => console.error("Passengers list error:", err)
+    );
+    return () => unsub();
+  }, []);
+
+  return (
+    <div className="flex flex-col h-full rg-anim-in">
+      <ListHeader title="Passengers" count={items?.length} onBack={onBack} />
+      <div className="flex-1 overflow-y-auto px-5 pb-8">
+        {items?.length === 0 && <EmptyState label="passengers" />}
+        {items?.map((p) => (
+          <div key={p.id} className="rg-card rounded-2xl p-3.5 mb-2.5 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full flex items-center justify-center rg-display font-bold shrink-0" style={{ background: "var(--accent-grad)", color: "#fff" }}>
+              {(p.name || "?")[0]}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-sm truncate">{p.name || "Unnamed"}</p>
+              <p className="text-xs rg-mono" style={{ color: "var(--muted)" }}>{p.mobile}</p>
+            </div>
+            <div className="flex items-center gap-1 text-xs font-semibold shrink-0">
+              <Star size={12} fill="var(--amber)" color="var(--amber)" /> {p.rating || "—"}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function DriversListScreen({ onBack }) {
+  const [items, setItems] = useState(null);
+  useEffect(() => {
+    const unsub = onSnapshot(
+      collection(db, COLLECTIONS.drivers),
+      (snap) => setItems(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+      (err) => console.error("Drivers list error:", err)
+    );
+    return () => unsub();
+  }, []);
+
+  return (
+    <div className="flex flex-col h-full rg-anim-in">
+      <ListHeader title="Drivers" count={items?.length} onBack={onBack} />
+      <div className="flex-1 overflow-y-auto px-5 pb-8">
+        {items?.length === 0 && <EmptyState label="drivers" />}
+        {items?.map((d) => (
+          <div key={d.id} className="rg-card rounded-2xl p-3.5 mb-2.5 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full flex items-center justify-center rg-display font-bold shrink-0" style={{ background: "var(--accent-grad)", color: "#fff" }}>
+              {(d.name || "?")[0]}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-sm truncate">{d.name || "Unnamed"}</p>
+              <p className="text-xs" style={{ color: "var(--muted)" }}>
+                {d.vehicleName || "—"} · <span className="rg-mono">{d.plate || "—"}</span>
+              </p>
+            </div>
+            <div className="flex flex-col items-end gap-1 shrink-0">
+              <span className="flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full"
+                style={{ background: d.online ? "#DCFCE7" : "var(--surface-2)", color: d.online ? "#15803D" : "var(--muted)" }}>
+                <span className="w-1.5 h-1.5 rounded-full" style={{ background: d.online ? "#22C55E" : "var(--muted)" }} />
+                {d.online ? "Online" : "Offline"}
+              </span>
+              <span className="flex items-center gap-1 text-xs font-semibold"><Star size={11} fill="var(--amber)" color="var(--amber)" /> {d.rating || "—"}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+const RIDE_STATUS_STYLE = {
+  searching: { bg: "#FEF3C7", fg: "#92400E", label: "Searching" },
+  accepted: { bg: "#DBEAFE", fg: "#1D4ED8", label: "Accepted" },
+  arrived: { bg: "#DBEAFE", fg: "#1D4ED8", label: "Arrived" },
+  ontrip: { bg: "#DCFCE7", fg: "#15803D", label: "On trip" },
+  completed: { bg: "#F3F1EF", fg: "#726B68", label: "Completed" },
+  cancelled: { bg: "#FEE2E2", fg: "#B91C1C", label: "Cancelled" },
+};
+
+function RidesListScreen({ onBack }) {
+  const [items, setItems] = useState(null);
+  useEffect(() => {
+    const q = query(collection(db, COLLECTIONS.rides), orderBy("createdAt", "desc"), limit(50));
+    const unsub = onSnapshot(
+      q,
+      (snap) => setItems(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+      (err) => console.error("Rides list error:", err)
+    );
+    return () => unsub();
+  }, []);
+
+  return (
+    <div className="flex flex-col h-full rg-anim-in">
+      <ListHeader title="Rides" count={items?.length} onBack={onBack} />
+      <div className="flex-1 overflow-y-auto px-5 pb-8">
+        {items?.length === 0 && <EmptyState label="rides" />}
+        {items?.length === 50 && (
+          <p className="text-[11px] text-center mb-2" style={{ color: "var(--muted)" }}>Showing the 50 most recent rides</p>
+        )}
+        {items?.map((r) => {
+          const s = RIDE_STATUS_STYLE[r.status] || { bg: "var(--surface-2)", fg: "var(--muted)", label: r.status || "Unknown" };
+          return (
+            <div key={r.id} className="rg-card rounded-2xl p-3.5 mb-2.5">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full" style={{ background: s.bg, color: s.fg }}>{s.label}</span>
+                <span className="font-bold text-sm">₹{r.fare ?? "—"}</span>
+              </div>
+              <div className="flex items-start gap-2 text-xs">
+                <MapPin size={12} className="mt-0.5 shrink-0" style={{ color: "var(--muted)" }} />
+                <div className="min-w-0">
+                  <p className="truncate">{r.pickup || "—"}</p>
+                  <p className="truncate" style={{ color: "var(--muted)" }}>→ {r.drop || "—"}</p>
+                </div>
+              </div>
+              <div className="flex items-center justify-between mt-2 pt-2 text-[11px]" style={{ borderTop: "1px solid var(--border)", color: "var(--muted)" }}>
+                <span>{r.passenger || "Passenger"}{r.driverName ? ` · ${r.driverName}` : ""}</span>
+                <span className="rg-mono">{r.distanceKm ? `${Number(r.distanceKm).toFixed(1)} km` : ""}</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -129,6 +281,7 @@ function StatCard({ icon: Icon, label, value, loading }) {
 function AdminDashboardScreen({ adminEmail }) {
   const [counts, setCounts] = useState({ passengers: null, drivers: null, rides: null });
   const [connected, setConnected] = useState(true);
+  const [view, setView] = useState("dashboard"); // dashboard | passengers | drivers | rides
 
   useEffect(() => {
     const unsubs = Object.entries(COLLECTIONS).map(([key, colName]) =>
@@ -146,6 +299,10 @@ function AdminDashboardScreen({ adminEmail }) {
     );
     return () => unsubs.forEach((u) => u());
   }, []);
+
+  if (view === "passengers") return <PassengersListScreen onBack={() => setView("dashboard")} />;
+  if (view === "drivers") return <DriversListScreen onBack={() => setView("dashboard")} />;
+  if (view === "rides") return <RidesListScreen onBack={() => setView("dashboard")} />;
 
   return (
     <div className="flex flex-col h-full rg-anim-in">
@@ -166,9 +323,9 @@ function AdminDashboardScreen({ adminEmail }) {
           </div>
         )}
         <div className="grid grid-cols-2 gap-3">
-          <StatCard icon={Users} label="Passengers" value={counts.passengers} loading={counts.passengers === null} />
-          <StatCard icon={Car} label="Drivers" value={counts.drivers} loading={counts.drivers === null} />
-          <StatCard icon={Navigation2} label="Total Rides" value={counts.rides} loading={counts.rides === null} />
+          <StatCard icon={Users} label="Passengers" value={counts.passengers} loading={counts.passengers === null} onClick={() => setView("passengers")} />
+          <StatCard icon={Car} label="Drivers" value={counts.drivers} loading={counts.drivers === null} onClick={() => setView("drivers")} />
+          <StatCard icon={Navigation2} label="Total Rides" value={counts.rides} loading={counts.rides === null} onClick={() => setView("rides")} />
           <div className="rg-card rounded-2xl p-4 flex flex-col justify-center gap-1" style={{ background: "var(--accent-grad)", border: "none" }}>
             <TrendingUp size={20} color="#fff" />
             <p className="text-xs font-semibold text-white/85 mt-1">Live sync</p>
@@ -177,8 +334,9 @@ function AdminDashboardScreen({ adminEmail }) {
         </div>
 
         <p className="text-[11px] mt-5" style={{ color: "var(--muted)" }}>
-          Counts update live via Firestore listeners on <span className="rg-mono">{COLLECTIONS.passengers}</span>,{" "}
-          <span className="rg-mono">{COLLECTIONS.drivers}</span> and <span className="rg-mono">{COLLECTIONS.rides}</span> (ride requests).
+          Tap a card above to see the live list. Counts update via Firestore listeners on{" "}
+          <span className="rg-mono">{COLLECTIONS.passengers}</span>, <span className="rg-mono">{COLLECTIONS.drivers}</span> and{" "}
+          <span className="rg-mono">{COLLECTIONS.rides}</span> (ride requests).
         </p>
       </div>
     </div>
@@ -207,3 +365,4 @@ export default function AdminApp() {
     </div>
   );
 }
+       
